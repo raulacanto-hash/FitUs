@@ -1,6 +1,7 @@
 import React from 'react';
 import { Check, Trash2 } from 'lucide-react';
 import { WorkoutSet } from '../../types/workout';
+import { useTheme } from '../../context/ThemeContext';
 
 interface SetRowProps {
   setIndex: number;
@@ -21,16 +22,25 @@ export const SetRow: React.FC<SetRowProps> = ({
   onRemove,
   canRemove
 }) => {
+  const { accent, isDark } = useTheme();
+
   return (
     <div 
-      className={`grid grid-cols-12 items-center gap-1.5 px-2.5 py-2 rounded-xl border transition-all ${
+      className={`grid grid-cols-12 items-center gap-1.5 px-2.5 py-2 rounded-2xl border transition-all ${
         setData.completed 
-          ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-200' 
-          : 'bg-zinc-950/40 border-zinc-800/60 text-zinc-200'
+          ? isDark 
+            ? 'bg-zinc-900 border-zinc-700' 
+            : 'bg-zinc-100 border-zinc-300'
+          : isDark 
+            ? 'bg-zinc-950/40 border-zinc-800/60' 
+            : 'bg-white border-zinc-200 shadow-sm'
       }`}
+      style={setData.completed ? { borderColor: `${accent.hex}60` } : undefined}
     >
       {/* Indicador de serie */}
-      <span className="col-span-2 font-mono text-xs font-medium text-zinc-400">
+      <span className={`col-span-2 font-mono text-xs font-bold ${
+        setData.completed ? '' : 'text-zinc-400'
+      }`} style={setData.completed ? { color: accent.hex } : undefined}>
         #{setIndex + 1}
       </span>
 
@@ -42,7 +52,12 @@ export const SetRow: React.FC<SetRowProps> = ({
           inputMode="decimal"
           value={setData.weight}
           onChange={(e) => onUpdate(exerciseId, setData.id, 'weight', e.target.value)}
-          className="w-full bg-zinc-800/70 border border-zinc-700/60 rounded-lg py-1.5 px-2 text-center text-xs font-semibold text-white focus:outline-none focus:border-emerald-500"
+          className={`w-full rounded-xl py-1.5 px-2 text-center text-xs font-bold focus:outline-none transition-colors ${
+            isDark 
+              ? 'bg-zinc-800/80 border border-zinc-700/60 text-white placeholder-zinc-500' 
+              : 'bg-zinc-50 border border-zinc-200 text-zinc-900 placeholder-zinc-400'
+          }`}
+          style={{ borderColor: setData.completed ? `${accent.hex}50` : undefined }}
           placeholder="0"
         />
       </div>
@@ -54,7 +69,12 @@ export const SetRow: React.FC<SetRowProps> = ({
           inputMode="numeric"
           value={setData.reps}
           onChange={(e) => onUpdate(exerciseId, setData.id, 'reps', e.target.value)}
-          className="w-full bg-zinc-800/70 border border-zinc-700/60 rounded-lg py-1.5 px-2 text-center text-xs font-semibold text-white focus:outline-none focus:border-emerald-500"
+          className={`w-full rounded-xl py-1.5 px-2 text-center text-xs font-bold focus:outline-none transition-colors ${
+            isDark 
+              ? 'bg-zinc-800/80 border border-zinc-700/60 text-white placeholder-zinc-500' 
+              : 'bg-zinc-50 border border-zinc-200 text-zinc-900 placeholder-zinc-400'
+          }`}
+          style={{ borderColor: setData.completed ? `${accent.hex}50` : undefined }}
           placeholder="0"
         />
       </div>
@@ -65,7 +85,11 @@ export const SetRow: React.FC<SetRowProps> = ({
           <button
             type="button"
             onClick={() => onRemove(exerciseId, setData.id)}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-zinc-500 hover:text-red-400 hover:bg-zinc-800/60 transition-colors"
+            className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${
+              isDark 
+                ? 'text-zinc-500 hover:text-red-400 hover:bg-zinc-800/60' 
+                : 'text-zinc-400 hover:text-red-600 hover:bg-zinc-100'
+            }`}
             title="Eliminar serie"
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -74,11 +98,14 @@ export const SetRow: React.FC<SetRowProps> = ({
         <button
           type="button"
           onClick={() => onToggle(exerciseId, setData.id)}
-          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+          className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all ${
             setData.completed 
-              ? 'bg-emerald-500 text-zinc-950 shadow-md shadow-emerald-500/20 scale-105' 
-              : 'bg-zinc-800/80 text-zinc-400 hover:bg-zinc-700 border border-zinc-700/50'
+              ? 'shadow-md scale-105' 
+              : isDark 
+                ? 'bg-zinc-800/80 text-zinc-400 hover:bg-zinc-700 border border-zinc-700/50' 
+                : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200 border border-zinc-300'
           }`}
+          style={setData.completed ? { backgroundColor: accent.hex, color: accent.contrastText === 'text-white' ? '#fff' : '#000' } : undefined}
           title={setData.completed ? "Desmarcar completado" : "Completar serie"}
         >
           <Check className="w-4 h-4 stroke-[3]" />

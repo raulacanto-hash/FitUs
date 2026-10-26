@@ -3,17 +3,20 @@ import {
   WorkoutSession, 
   WorkoutExercise, 
   ExerciseDefinition, 
-  MuscleCategory 
+  MuscleCategory,
+  RoutineTemplate 
 } from '../types/workout';
 import { EXERCISE_DATABASE } from '../data/exerciseDatabase';
 import { INITIAL_HISTORY } from '../data/initialHistory';
+import { PREDEFINED_ROUTINES } from '../data/predefinedRoutines';
 import { getLocalDateString } from '../utils/dates';
 import { getStoredItem, setStoredItem, clearAllStorage } from '../utils/storage';
 
 const STORAGE_KEYS = {
   HISTORY: 'fittrack_history',
   CUSTOM_EXERCISES: 'fittrack_custom_exercises',
-  CURRENT_WORKOUT: 'fittrack_current_workout'
+  CURRENT_WORKOUT: 'fittrack_current_workout',
+  ROUTINE_TEMPLATES: 'fittrack_routine_templates'
 };
 
 export function createNewWorkoutSession(): WorkoutSession {
@@ -21,7 +24,7 @@ export function createNewWorkoutSession(): WorkoutSession {
     id: `w-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
     routineName: 'Entrenamiento de Hoy',
     date: getLocalDateString(),
-    startTime: undefined, // Se activa al empezar la sesión
+    startTime: undefined,
     exercises: [
       {
         id: `ex-${Date.now()}-1`,
@@ -49,7 +52,12 @@ export function useWorkoutManager() {
     return getStoredItem<ExerciseDefinition[]>(STORAGE_KEYS.CUSTOM_EXERCISES, []);
   });
 
-  // Entrenamiento actual
+  // Plantillas de Rutinas (Predefinidas + creadas por el usuario)
+  const [routineTemplates, setRoutineTemplates] = useState<RoutineTemplate[]>(() => {
+    return getStoredItem<RoutineTemplate[]>(STORAGE_KEYS.ROUTINE_TEMPLATES, PREDEFINED_ROUTINES);
+  });
+
+  // Entrenamiento actual en curso
   const [currentWorkout, setCurrentWorkout] = useState<WorkoutSession>(() => {
     return getStoredItem<WorkoutSession>(STORAGE_KEYS.CURRENT_WORKOUT, createNewWorkoutSession());
   });
@@ -67,6 +75,10 @@ export function useWorkoutManager() {
   }, [customExercises]);
 
   useEffect(() => {
+    setStoredItem(STORAGE_KEYS.ROUTINE_TEMPLATES, routineTemplates);
+  }, [routineTemplates]);
+
+  useEffect(() => {
     setStoredItem(STORAGE_KEYS.CURRENT_WORKOUT, currentWorkout);
   }, [currentWorkout]);
 
@@ -75,7 +87,7 @@ export function useWorkoutManager() {
     return [...EXERCISE_DATABASE, ...customExercises];
   }, [customExercises]);
 
-  // Asegura que el temporizador de inicio esté activo cuando se interactúa
+  // Asegura que el tiempo de inicio esté marcado
   const ensureStartTime = useCallback(() => {
     setCurrentWorkout(prev => {
       if (!prev.startTime) {
@@ -85,7 +97,71 @@ export function useWorkoutManager() {
     });
   }, []);
 
-  // Manejo de Series en el Entrenamiento Activo
+  // Iniciar una rutina específica a partir de una plantilla
+  const handleStartRoutine = useCallback((routine: RoutineTemplate) => {
+    const newSession: WorkoutSession = {
+      id: `w-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      routineName: routine.name,
+      routineId: routine.id,
+      date: getLocalDateString(),
+      startTime: Date.now(),
+      exercises: routine.exercises.map((templateEx, idx) => ({
+        id: `ex-${Date.now()}-${idx}`,
+        name: templateEx.name,
+        category: templateEx.category,
+        notes: '',
+        sets: Array.from({ length: templateEx.targetSets }, (_, sIdx) => ({
+          id: `st-${Date.now()}-${idx}-${sIdx}`,
+          reps: templateEx.defaultReps,
+          weight: templateEx.defaultWeight,
+          completed: false
+        }))
+      }))
+    };
+    setCurrentWorkout(newSession);
+  }, []);
+
+  // Guardar la sesión actual como una nueva plantilla de rutina
+  const handleSaveCurrentAsRoutine = useCallback((name: string, category: string, subtitle?: string) => {
+    const newTemplate: RoutineTemplate = {
+      id: `custom-routine-${Date.now()}`,
+      name: name.trim() || currentWorkout.routineName,
+      subtitle: subtitle || `${currentWorkout.exercises.length} ejercicios registrados`,
+      category: category.toUpperCase() || 'PERSONALIZADO',
+      estimatedMinutes: Math.max(30, currentWorkout.exercises.length * 9),
+      recoveryScore: 100,
+      heroGradient: 'from-emerald-500/20 via-zinc-900 to-zinc-950',
+      isCustom: true,
+      exercises: currentWorkout.exercises.map(ex => ({
+        name: ex.name,
+        category: ex.category,
+        targetSets: Math.max(1, ex.sets.length),
+        defaultReps: typeof ex.sets[0]?.reps === 'number' ? ex.sets[0].reps : 10,
+        defaultWeight: typeof ex.sets[0]?.weight === 'number' ? ex.sets[0].weight : 20
+      }))
+    };
+
+    setRoutineTemplates(prev => [newTemplate, ...prev]);
+    alert(`¡Rutina "${newTemplate.name}" guardada con éxito en tus plantillas!`);
+  }, [currentWorkout]);
+
+  // Crear rutina desde cero
+  const handleCreateRoutineTemplate = useCallback((template: Omit<RoutineTemplate, 'id'>) => {
+    const newTemplate: RoutineTemplate = {
+      ...template,
+      id: `custom-routine-${Date.now()}`,
+      isCustom: true
+    };
+    setRoutineTemplates(prev => [newTemplate, ...prev]);
+  }, []);
+
+  const handleDeleteRoutineTemplate = useCallback((id: string) => {
+    if (window.confirm('¿Seguro que deseas eliminar esta rutina?')) {
+      setRoutineTemplates(prev => prev.filter(r => r.id !== id));
+    }
+  }, []);
+
+  // Manejo de Series
   const handleToggleSet = useCallback((exerciseId: string, setId: string, onSetCompleted?: () => void) => {
     ensureStartTime();
     setCurrentWorkout(prev => {
@@ -104,7 +180,6 @@ export function useWorkoutManager() {
       });
 
       if (isNowCompleted && onSetCompleted) {
-        // Disparar descanso fuera del ciclo de reconciliación
         setTimeout(onSetCompleted, 0);
       }
 
@@ -176,7 +251,7 @@ export function useWorkoutManager() {
     setCurrentWorkout(prev => ({ ...prev, routineName: name }));
   }, []);
 
-  // Agregar ejercicio desde catálogo (al entreno activo o al modal de edición)
+  // Agregar ejercicio desde catálogo
   const handleSelectExerciseFromDb = useCallback((exerciseObj: ExerciseDefinition) => {
     const newEx: WorkoutExercise = {
       id: `ex-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
@@ -203,7 +278,7 @@ export function useWorkoutManager() {
     }
   }, [editingWorkout, ensureStartTime]);
 
-  // Crear y guardar ejercicio personalizado
+  // Crear ejercicio personalizado
   const handleCreateCustomExercise = useCallback((name: string, category: MuscleCategory) => {
     if (!name.trim()) return;
     const customObj: ExerciseDefinition = {
@@ -228,7 +303,6 @@ export function useWorkoutManager() {
     const now = Date.now();
     const start = currentWorkout.startTime || now - 45 * 60 * 1000;
     const rawMinutes = Math.round((now - start) / 60000);
-    // Acotar duración a un rango razonable (1 a 360 min)
     const duration = Math.min(360, Math.max(1, rawMinutes));
 
     const finishedWorkout: WorkoutSession = {
@@ -253,7 +327,7 @@ export function useWorkoutManager() {
     return true;
   }, [currentWorkout]);
 
-  // Acciones de Historial
+  // Historial
   const handleStartEditWorkout = useCallback((workout: WorkoutSession) => {
     setEditingWorkout(JSON.parse(JSON.stringify(workout)));
   }, []);
@@ -270,20 +344,25 @@ export function useWorkoutManager() {
     }
   }, []);
 
-  // Métricas: listado de nombres de ejercicios usados
-  const allUsedExerciseNames = useMemo(() => {
-    const names = new Set<string>();
-    // Primero los que tienen datos en el historial
-    history.forEach(w => w.exercises?.forEach(e => names.add(e.name)));
-    // Luego los del catálogo
-    fullExerciseList.forEach(e => names.add(e.name));
-    return Array.from(names);
-  }, [history, fullExerciseList]);
+  // Cálculo de entrenamientos completados en la semana actual
+  const completedThisWeek = useMemo(() => {
+    const today = new Date();
+    // Obtener el lunes de la semana actual
+    const day = today.getDay(); // 0 es domingo
+    const diffToMonday = today.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(today.setDate(diffToMonday));
+    monday.setHours(0, 0, 0, 0);
+
+    return history.filter(w => {
+      const workoutDate = new Date(w.date + 'T00:00:00');
+      return workoutDate >= monday;
+    }).length;
+  }, [history]);
 
   // Ajustes: Exportar JSON
   const handleExportData = useCallback(() => {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(
-      JSON.stringify({ history, customExercises }, null, 2)
+      JSON.stringify({ history, customExercises, routineTemplates }, null, 2)
     );
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute("href", dataStr);
@@ -291,7 +370,7 @@ export function useWorkoutManager() {
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
-  }, [history, customExercises]);
+  }, [history, customExercises, routineTemplates]);
 
   // Ajustes: Importar JSON
   const handleImportData = useCallback((file: File) => {
@@ -304,6 +383,9 @@ export function useWorkoutManager() {
           setHistory(parsed.history);
           if (parsed.customExercises && Array.isArray(parsed.customExercises)) {
             setCustomExercises(parsed.customExercises);
+          }
+          if (parsed.routineTemplates && Array.isArray(parsed.routineTemplates)) {
+            setRoutineTemplates(parsed.routineTemplates);
           }
           alert('¡Datos e historial restaurados con éxito!');
         } else if (Array.isArray(parsed)) {
@@ -318,12 +400,13 @@ export function useWorkoutManager() {
     };
   }, []);
 
-  // Ajustes: Reinicio Total Limpio
+  // Reinicio total
   const handleResetAllData = useCallback(() => {
     if (window.confirm('¿Deseas reiniciar completamente todos los datos de la app?')) {
       clearAllStorage();
       setHistory([]);
       setCustomExercises([]);
+      setRoutineTemplates(PREDEFINED_ROUTINES);
       const cleanSession: WorkoutSession = {
         id: `w-${Date.now()}`,
         routineName: 'Entrenamiento de Hoy',
@@ -339,11 +422,16 @@ export function useWorkoutManager() {
   return {
     history,
     customExercises,
+    routineTemplates,
     currentWorkout,
     fullExerciseList,
-    allUsedExerciseNames,
+    completedThisWeek,
     editingWorkout,
     setEditingWorkout,
+    handleStartRoutine,
+    handleSaveCurrentAsRoutine,
+    handleCreateRoutineTemplate,
+    handleDeleteRoutineTemplate,
     handleToggleSet,
     handleUpdateSet,
     handleAddSet,

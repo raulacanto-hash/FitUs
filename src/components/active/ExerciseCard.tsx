@@ -2,6 +2,7 @@ import React from 'react';
 import { Trash2, Plus, FileText } from 'lucide-react';
 import { WorkoutExercise } from '../../types/workout';
 import { SetRow } from './SetRow';
+import { useTheme } from '../../context/ThemeContext';
 
 interface ExerciseCardProps {
   exercise: WorkoutExercise;
@@ -24,25 +25,38 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = ({
   onRemoveExercise,
   onUpdateNotes,
 }) => {
+  const { accent, isDark } = useTheme();
+
   return (
-    <div className="bg-zinc-900/80 border border-zinc-800/80 rounded-2xl p-4 space-y-3 shadow-sm backdrop-blur-md">
+    <div className={`p-4 rounded-3xl border space-y-3 transition-all ${
+      isDark 
+        ? 'bg-zinc-900/80 border-zinc-800/80 backdrop-blur-md' 
+        : 'bg-white border-zinc-200 shadow-sm'
+    }`}>
       {/* Header del Ejercicio */}
       <div className="flex justify-between items-start">
         <div>
-          <h3 className="font-bold text-sm text-zinc-100 flex items-center gap-2">
-            <span className="text-[11px] font-mono bg-zinc-800 text-zinc-400 w-5 h-5 rounded-md flex items-center justify-center border border-zinc-700/50">
+          <h3 className="font-bold text-sm flex items-center gap-2">
+            <span className={`text-[11px] font-mono w-5 h-5 rounded-md flex items-center justify-center border ${
+              isDark ? 'bg-zinc-800 text-zinc-400 border-zinc-700/50' : 'bg-zinc-100 text-zinc-600 border-zinc-300'
+            }`}>
               {exerciseIndex + 1}
             </span>
             {exercise.name}
           </h3>
-          <span className="text-[10px] uppercase font-semibold tracking-wider text-emerald-400 ml-7 block mt-0.5">
+          <span 
+            className="text-[10px] uppercase font-bold tracking-wider ml-7 block mt-0.5"
+            style={{ color: accent.hex }}
+          >
             {exercise.category}
           </span>
         </div>
         <button
           type="button"
           onClick={() => onRemoveExercise(exercise.id)}
-          className="text-zinc-400 hover:text-red-400 p-1.5 transition-colors rounded-lg hover:bg-zinc-800/50"
+          className={`p-1.5 transition-colors rounded-xl ${
+            isDark ? 'text-zinc-500 hover:text-red-400 hover:bg-zinc-800/50' : 'text-zinc-400 hover:text-red-600 hover:bg-zinc-100'
+          }`}
           title="Eliminar ejercicio de la sesión"
         >
           <Trash2 className="w-4 h-4" />
@@ -77,19 +91,27 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = ({
         <button
           type="button"
           onClick={() => onAddSet(exercise.id)}
-          className="text-xs font-semibold text-zinc-300 hover:text-white flex items-center gap-1.5 bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700/50 px-3 py-1.5 rounded-xl transition-colors active:scale-95"
+          className={`text-xs font-bold flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all active:scale-95 ${
+            isDark 
+              ? 'bg-zinc-800/60 hover:bg-zinc-800 text-zinc-200 border-zinc-700/50' 
+              : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-800 border-zinc-300'
+          }`}
         >
-          <Plus className="w-3.5 h-3.5 text-emerald-400" /> Serie
+          <Plus className="w-3.5 h-3.5" style={{ color: accent.hex }} /> Serie
         </button>
 
-        <div className="flex-1 flex items-center gap-2 bg-zinc-950/50 border border-zinc-800/60 rounded-xl px-2.5 py-1">
+        <div className={`flex-1 flex items-center gap-2 rounded-xl px-2.5 py-1 border ${
+          isDark ? 'bg-zinc-950/60 border-zinc-800/60' : 'bg-zinc-50 border-zinc-200'
+        }`}>
           <FileText className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
           <input
             type="text"
             value={exercise.notes}
             onChange={(e) => onUpdateNotes(exercise.id, e.target.value)}
             placeholder="Añadir nota rápida..."
-            className="bg-transparent text-xs text-zinc-300 placeholder-zinc-500 focus:outline-none w-full"
+            className={`bg-transparent text-xs placeholder-zinc-500 focus:outline-none w-full ${
+              isDark ? 'text-zinc-200' : 'text-zinc-900'
+            }`}
           />
         </div>
       </div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, Trash2, Plus, Dumbbell } from 'lucide-react';
 import { WorkoutSession } from '../../types/workout';
+import { useTheme } from '../../context/ThemeContext';
 
 interface EditWorkoutModalProps {
   editingWorkout: WorkoutSession | null;
@@ -17,6 +18,8 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
   onUpdateWorkout,
   onOpenAddExercise
 }) => {
+  const { accent, isDark } = useTheme();
+
   if (!editingWorkout) return null;
 
   const handleAddSetToExercise = (exerciseId: string) => {
@@ -74,10 +77,12 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-zinc-950/80 backdrop-blur-md flex items-center justify-center p-3 animate-in fade-in duration-200">
-      <div className="bg-zinc-900 border border-zinc-800 rounded-3xl max-w-lg w-full max-h-[88vh] flex flex-col shadow-2xl p-4 space-y-3">
+      <div className={`border rounded-3xl max-w-lg w-full max-h-[88vh] flex flex-col shadow-2xl p-4 space-y-3 ${
+        isDark ? 'bg-zinc-900 border-zinc-800 text-zinc-100' : 'bg-white border-zinc-200 text-zinc-900'
+      }`}>
         {/* Header */}
-        <div className="flex justify-between items-center border-b border-zinc-800 pb-2.5">
-          <h3 className="font-bold text-sm text-white">Editar Entrenamiento Pasado</h3>
+        <div className={`flex justify-between items-center border-b pb-2.5 ${isDark ? 'border-zinc-800' : 'border-zinc-200'}`}>
+          <h3 className="font-bold text-sm">Editar Entrenamiento Pasado</h3>
           <button 
             type="button"
             onClick={onClose} 
@@ -96,7 +101,10 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
                 type="text"
                 value={editingWorkout.routineName}
                 onChange={(e) => onUpdateWorkout(prev => ({ ...prev, routineName: e.target.value }))}
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                className={`w-full rounded-xl p-2 text-xs border focus:outline-none ${
+                  isDark ? 'bg-zinc-950 border-zinc-800 text-white' : 'bg-zinc-50 border-zinc-200 text-zinc-900'
+                }`}
+                style={{ borderColor: editingWorkout.routineName ? accent.hex : undefined }}
               />
             </div>
             <div>
@@ -105,7 +113,9 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
                 type="date"
                 value={editingWorkout.date}
                 onChange={(e) => onUpdateWorkout(prev => ({ ...prev, date: e.target.value }))}
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                className={`w-full rounded-xl p-2 text-xs border focus:outline-none ${
+                  isDark ? 'bg-zinc-950 border-zinc-800 text-white' : 'bg-zinc-50 border-zinc-200 text-zinc-900'
+                }`}
               />
             </div>
           </div>
@@ -113,13 +123,15 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
           {/* Lista de Ejercicios */}
           <div className="space-y-2">
             {editingWorkout.exercises.map((ex) => (
-              <div key={ex.id} className="bg-zinc-950/60 border border-zinc-800 rounded-2xl p-3 space-y-2">
+              <div key={ex.id} className={`p-3 rounded-2xl border space-y-2 ${
+                isDark ? 'bg-zinc-950/60 border-zinc-800' : 'bg-zinc-50 border-zinc-200'
+              }`}>
                 <div className="flex justify-between items-center">
-                  <span className="font-semibold text-xs text-white">{ex.name}</span>
+                  <span className="font-bold text-xs">{ex.name}</span>
                   <button
                     type="button"
                     onClick={() => handleRemoveExercise(ex.id)}
-                    className="text-zinc-500 hover:text-red-400 p-1"
+                    className="text-zinc-400 hover:text-red-500 p-1"
                     title="Eliminar ejercicio"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -130,14 +142,16 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
                 <div className="space-y-1">
                   {ex.sets.map((s, sIdx) => (
                     <div key={s.id || sIdx} className="flex items-center gap-2 text-xs">
-                      <span className="text-zinc-500 font-mono text-[10px] w-5">#{sIdx + 1}</span>
+                      <span className="text-zinc-400 font-mono text-[10px] w-5">#{sIdx + 1}</span>
                       <input
                         type="number"
                         step="any"
                         inputMode="decimal"
                         value={s.weight}
                         onChange={(e) => handleUpdateSetValue(ex.id, sIdx, 'weight', e.target.value)}
-                        className="bg-zinc-800 border border-zinc-700/60 rounded px-2 py-1 text-center w-16 text-white text-xs focus:outline-none focus:border-emerald-500"
+                        className={`border rounded px-2 py-1 text-center w-16 text-xs font-bold focus:outline-none ${
+                          isDark ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-white border-zinc-300 text-zinc-900'
+                        }`}
                         placeholder="0"
                       />
                       <span className="text-zinc-400 text-[10px]">kg ×</span>
@@ -146,13 +160,15 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
                         inputMode="numeric"
                         value={s.reps}
                         onChange={(e) => handleUpdateSetValue(ex.id, sIdx, 'reps', e.target.value)}
-                        className="bg-zinc-800 border border-zinc-700/60 rounded px-2 py-1 text-center w-16 text-white text-xs focus:outline-none focus:border-emerald-500"
+                        className={`border rounded px-2 py-1 text-center w-16 text-xs font-bold focus:outline-none ${
+                          isDark ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-white border-zinc-300 text-zinc-900'
+                        }`}
                         placeholder="0"
                       />
                       <button
                         type="button"
                         onClick={() => handleRemoveSet(ex.id, sIdx)}
-                        className="text-zinc-500 hover:text-red-400 p-1 ml-auto"
+                        className="text-zinc-400 hover:text-red-500 p-1 ml-auto"
                         title="Eliminar serie"
                       >
                         <X className="w-3.5 h-3.5" />
@@ -165,7 +181,8 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
                 <button
                   type="button"
                   onClick={() => handleAddSetToExercise(ex.id)}
-                  className="text-[11px] font-medium text-emerald-400 hover:text-emerald-300 flex items-center gap-1 pt-1"
+                  className="text-[11px] font-bold flex items-center gap-1 pt-1"
+                  style={{ color: accent.hex }}
                 >
                   <Plus className="w-3 h-3" /> Añadir serie
                 </button>
@@ -177,25 +194,32 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
           <button
             type="button"
             onClick={onOpenAddExercise}
-            className="w-full py-2 bg-zinc-800/80 hover:bg-zinc-700/80 text-zinc-300 border border-zinc-700/50 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors"
+            className={`w-full py-2.5 rounded-xl text-xs font-bold border flex items-center justify-center gap-1.5 transition-colors ${
+              isDark 
+                ? 'bg-zinc-800/80 hover:bg-zinc-700/80 text-zinc-300 border-zinc-700/50' 
+                : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-800 border-zinc-300'
+            }`}
           >
-            <Dumbbell className="w-3.5 h-3.5 text-emerald-400" /> Añadir Ejercicio a esta Sesión
+            <Dumbbell className="w-3.5 h-3.5" style={{ color: accent.hex }} /> Añadir Ejercicio a esta Sesión
           </button>
         </div>
 
         {/* Footer */}
-        <div className="flex gap-2 pt-2 border-t border-zinc-800">
+        <div className="flex gap-2 pt-2 border-t" style={{ borderColor: isDark ? '#27272a' : '#e4e4e7' }}>
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-medium py-2 rounded-xl text-xs transition-colors"
+            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-colors ${
+              isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300' : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-700'
+            }`}
           >
             Cancelar
           </button>
           <button
             type="button"
             onClick={onSave}
-            className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold py-2 rounded-xl text-xs transition-colors active:scale-95"
+            style={{ backgroundColor: accent.hex }}
+            className={`flex-1 font-black py-2 rounded-xl text-xs transition-colors active:scale-95 ${accent.contrastText}`}
           >
             Guardar Cambios
           </button>

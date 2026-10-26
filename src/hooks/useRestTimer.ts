@@ -8,6 +8,7 @@ export interface RestTimerState {
   startTimer: (duration: number) => void;
   toggleTimer: () => void;
   resetTimer: () => void;
+  adjustTimer: (secondsDelta: number) => void; // +15s o -15s
 }
 
 export function useRestTimer(): RestTimerState {
@@ -50,6 +51,34 @@ export function useRestTimer(): RestTimerState {
     targetEndTimeRef.current = null;
   }, []);
 
+  // Ajustar tiempo (+15s / -15s)
+  const adjustTimer = useCallback((secondsDelta: number) => {
+    unlockAudio();
+    const now = Date.now();
+
+    if (targetEndTimeRef.current && isActive) {
+      // Temporizador en marcha
+      const updatedTarget = Math.max(now, targetEndTimeRef.current + secondsDelta * 1000);
+      const diff = Math.max(0, Math.ceil((updatedTarget - now) / 1000));
+      
+      if (diff <= 0) {
+        setIsActive(false);
+        targetEndTimeRef.current = null;
+        setSecondsRemaining(0);
+      } else {
+        targetEndTimeRef.current = updatedTarget;
+        setSecondsRemaining(diff);
+      }
+    } else if (secondsRemaining > 0) {
+      // Temporizador en pausa
+      const newRemaining = Math.max(0, secondsRemaining + secondsDelta);
+      setSecondsRemaining(newRemaining);
+    } else if (secondsDelta > 0) {
+      // Si estaba en 0 y sumamos +15s, iniciarlo
+      startTimer(secondsDelta);
+    }
+  }, [isActive, secondsRemaining, startTimer]);
+
   useEffect(() => {
     if (!isActive || !targetEndTimeRef.current) return;
 
@@ -75,6 +104,7 @@ export function useRestTimer(): RestTimerState {
     initialDuration,
     startTimer,
     toggleTimer,
-    resetTimer
+    resetTimer,
+    adjustTimer
   };
 }

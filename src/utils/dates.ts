@@ -28,3 +28,27 @@ export function formatDisplayDate(dateStr: string): string {
   const [year, month, day] = parts;
   return `${day}/${month}/${year}`;
 }
+
+/**
+ * Formatea una fecha YYYY-MM-DD de forma relativa para las sesiones recientes:
+ * "Hoy", "Ayer", "Hace 3 días" o la fecha corta para registros más antiguos.
+ */
+export function formatRelativeDate(dateStr: string): string {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-').map(Number);
+  if (parts.length !== 3 || parts.some(Number.isNaN)) return dateStr;
+
+  const [year, month, day] = parts;
+  const date = new Date(year, month - 1, day);
+  const today = new Date();
+
+  // Comparar días de calendario en UTC evita desfases por horario de verano
+  const utcDate = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+  const utcToday = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+  const diffDays = Math.round((utcToday - utcDate) / 86400000);
+
+  if (diffDays === 0) return 'Hoy';
+  if (diffDays === 1) return 'Ayer';
+  if (diffDays > 1 && diffDays < 7) return `Hace ${diffDays} días`;
+  return formatDisplayDate(dateStr);
+}
