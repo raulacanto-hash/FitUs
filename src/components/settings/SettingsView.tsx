@@ -1,15 +1,20 @@
 import React, { useRef } from 'react';
-import { Settings, Download, Upload, AlertTriangle, Moon, Sun, Palette, Check } from 'lucide-react';
+import { Settings, Download, Upload, AlertTriangle, Moon, Sun, Palette, Check, ChevronRight, User } from 'lucide-react';
 import { useTheme, ACCENT_PALETTES, AccentColor } from '../../context/ThemeContext';
+import { UserProfile } from '../../types/workout';
 import { CloudAccountCard } from './CloudAccountCard';
 
 interface SettingsViewProps {
+  profile: UserProfile;
+  onOpenProfile: () => void;
   onExportData: () => void;
   onImportData: (file: File) => void;
   onResetAllData: () => void;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
+  profile,
+  onOpenProfile,
   onExportData,
   onImportData,
   onResetAllData
@@ -38,6 +43,30 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       {/* SECCIÓN 0: CUENTA Y SINCRONIZACIÓN EN LA NUBE */}
       <CloudAccountCard />
+
+      {/* SECCIÓN 0.1: PERFIL DE USUARIO */}
+      <button
+        type="button"
+        onClick={onOpenProfile}
+        className={`w-full rounded-2xl p-4 border flex items-center gap-3 text-left transition-colors ${
+          isDark
+            ? 'bg-zinc-900/80 border-zinc-800/80 hover:bg-zinc-900'
+            : 'bg-white border-zinc-200 shadow-sm hover:bg-zinc-50'
+        }`}
+      >
+        <div className="w-11 h-11 rounded-full bg-purple-600 flex items-center justify-center text-white font-black text-base shadow-md shadow-purple-600/30 flex-shrink-0">
+          {profile.name.trim().charAt(0).toUpperCase() || '?'}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1">
+            <User className="w-3 h-3" style={{ color: accent.hex }} />
+            Perfil de usuario
+          </p>
+          <p className="text-sm font-black truncate mt-0.5">{profile.name}</p>
+          <p className="text-[10px] text-zinc-500">Toca para cambiar tu nombre y objetivo semanal</p>
+        </div>
+        <ChevronRight className="w-4 h-4 text-zinc-500 flex-shrink-0" />
+      </button>
 
       {/* SECCIÓN 1: PERSONALIZACIÓN DE TEMA Y COLORES */}
       <div className={`rounded-2xl p-4 space-y-4 border ${

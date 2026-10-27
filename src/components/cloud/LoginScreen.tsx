@@ -2,37 +2,46 @@ import React, { useState } from 'react';
 import { Cloud, Dumbbell, LogIn, ShieldCheck, Smartphone } from 'lucide-react';
 import { useCloudSync } from '../../context/CloudSyncContext';
 import { useTheme } from '../../context/ThemeContext';
-
-const GoogleIcon: React.FC = () => (
-  <svg viewBox="0 0 24 24" className="w-4 h-4" aria-hidden="true">
-    <path
-      fill="#4285F4"
-      d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47a5.54 5.54 0 0 1-2.4 3.58v2.98h3.88c2.27-2.09 3.54-5.17 3.54-8.8Z"
-    />
-    <path
-      fill="#34A853"
-      d="M12 24c3.24 0 5.96-1.08 7.95-2.93l-3.88-2.98c-1.08.73-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.95H1.27v3.09A11.99 11.99 0 0 0 12 24Z"
-    />
-    <path
-      fill="#FBBC05"
-      d="M5.27 14.3A7.2 7.2 0 0 1 4.9 12c0-.8.13-1.57.37-2.3V6.61H1.27A11.99 11.99 0 0 0 0 12c0 1.94.47 3.77 1.27 5.39l4-3.09Z"
-    />
-    <path
-      fill="#EA4335"
-      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.44-3.44C17.96 1.19 15.24 0 12 0 7.31 0 3.26 2.69 1.27 6.61l4 3.09C6.22 6.86 8.87 4.75 12 4.75Z"
-    />
-  </svg>
-);
+import { GoogleSignInButton } from './GoogleSignInButton';
 
 export const LoginScreen: React.FC = () => {
-  const { signInWithGoogle, enterLocalMode, error } = useCloudSync();
+  const { signInWithGoogle, signInWithGoogleCredential, enterLocalMode, error } = useCloudSync();
   const { accent, isDark, setThemeMode } = useTheme();
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
+  const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
+  const oauthConsentUrl = projectId
+    ? `https://console.cloud.google.com/apis/credentials/consent?project=${projectId}`
+    : null;
+  const oauthCredentialsUrl = projectId
+    ? `https://console.cloud.google.com/apis/credentials?project=${projectId}`
+    : null;
+  const displayError = localError ?? error;
+  const showOauthHelp = Boolean(
+    oauthConsentUrl &&
+      displayError &&
+      (displayError.includes('Google rechazó') ||
+        displayError.includes('consentimiento') ||
+        displayError.includes('usuario de prueba'))
+  );
 
   const handleGoogleSignIn = async () => {
     setIsSigningIn(true);
+    setLocalError(null);
     try {
       await signInWithGoogle();
+    } catch {
+      // El contexto ya expone el mensaje de error
+    } finally {
+      setIsSigningIn(false);
+    }
+  };
+
+  const handleGoogleCredential = async (idToken: string) => {
+    setIsSigningIn(true);
+    setLocalError(null);
+    try {
+      await signInWithGoogleCredential(idToken);
     } catch {
       // El contexto ya expone el mensaje de error
     } finally {
@@ -56,7 +65,7 @@ export const LoginScreen: React.FC = () => {
               <Dumbbell className="w-5 h-5" style={{ color: accent.hex }} />
             </div>
             <div>
-              <h1 className="text-base font-black tracking-tight">FitTrack</h1>
+              <h1 className="text-base font-black tracking-tight">FitUs</h1>
               <p className="text-[9px] font-mono uppercase tracking-widest text-zinc-500">
                 Tu historial en la nube
               </p>
@@ -120,33 +129,48 @@ export const LoginScreen: React.FC = () => {
           </div>
         </div>
 
-        {error && (
-          <div className="px-3 py-2.5 rounded-xl border border-red-500/30 bg-red-500/10">
-            <p className="text-[11px] text-red-400 font-medium">{error}</p>
+        {displayError && (
+          <div className="px-3 py-2.5 rounded-xl border border-red-500/30 bg-red-500/10 space-y-1.5">
+            <p className="text-[11px] text-red-400 font-medium leading-relaxed">{displayError}</p>
+            {showOauthHelp && oauthConsentUrl && (
+              <a
+                href={oauthConsentUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[10px] font-bold text-red-300 underline underline-offset-2 inline-block"
+              >
+                Revisar pantalla de consentimiento OAuth
+              </a>
+            )}
           </div>
         )}
 
         <div className="space-y-2.5">
+          <GoogleSignInButton
+            onCredential={handleGoogleCredential}
+            onError={(googleError) => {
+              console.error('Error de Google Identity Services:', googleError);
+              setLocalError('No se pudo completar el acceso con Google. Inténtalo de nuevo.');
+            }}
+            width={300}
+          />
+
           <button
             type="button"
             onClick={handleGoogleSignIn}
             disabled={isSigningIn}
-            className={`w-full font-black py-3.5 px-4 rounded-2xl text-sm flex items-center justify-center gap-2.5 border transition-all active:scale-[0.98] disabled:opacity-60 ${
+            className={`w-full py-2 rounded-xl text-[10px] font-bold transition-colors disabled:opacity-60 ${
               isDark
-                ? 'bg-white text-zinc-900 border-white hover:bg-zinc-100'
-                : 'bg-zinc-900 text-white border-zinc-900 hover:bg-zinc-800'
+                ? 'text-zinc-400 hover:text-white hover:bg-zinc-900'
+                : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
             }`}
           >
-            {isSigningIn ? (
-              <span
-                className="w-4 h-4 rounded-full border-2 border-t-transparent animate-spin"
-                style={{ borderColor: 'currentColor', borderTopColor: 'transparent' }}
-              />
-            ) : (
-              <GoogleIcon />
-            )}
-            {isSigningIn ? 'Conectando con Google...' : 'Continuar con Google'}
+            {isSigningIn ? 'Redirigiendo a Google...' : '¿No funciona el botón? Usar redirección'}
           </button>
+
+          <p className="text-center text-[9px] text-zinc-500 leading-relaxed">
+            Elige tu cuenta de Google y volverás automáticamente a la app.
+          </p>
 
           <button
             type="button"
@@ -160,6 +184,49 @@ export const LoginScreen: React.FC = () => {
             <LogIn className="w-3.5 h-3.5" />
             Continuar sin cuenta (solo este dispositivo)
           </button>
+
+          {oauthConsentUrl && (
+            <details
+              className={`rounded-2xl border px-3 py-2 text-[10px] ${
+                isDark ? 'border-zinc-800 bg-zinc-900/40 text-zinc-400' : 'border-zinc-200 bg-white text-zinc-600'
+              }`}
+            >
+              <summary className="cursor-pointer font-bold text-[10px] text-zinc-500">
+                ¿Problemas para entrar con Google?
+              </summary>
+              <div className="pt-2 space-y-1.5 leading-relaxed">
+                <p>
+                  Si Google muestra <strong>“Acceso bloqueado”</strong>, agrega tu correo como
+                  usuario de prueba en la pantalla de consentimiento OAuth o publica la app.
+                </p>
+                <a
+                  href={oauthConsentUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-block font-bold underline underline-offset-2"
+                  style={{ color: accent.hex }}
+                >
+                  Abrir pantalla de consentimiento OAuth
+                </a>
+                <p>
+                  Si Google muestra <strong>origin_mismatch</strong>, agrega{' '}
+                  <span className="font-mono">https://{window.location.host}</span> en{' '}
+                  <strong>Orígenes JavaScript autorizados</strong> del cliente OAuth.
+                </p>
+                {oauthCredentialsUrl && (
+                  <a
+                    href={oauthCredentialsUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-block font-bold underline underline-offset-2"
+                    style={{ color: accent.hex }}
+                  >
+                    Abrir credenciales OAuth
+                  </a>
+                )}
+              </div>
+            </details>
+          )}
         </div>
 
         <p className="text-center text-[9px] text-zinc-500 leading-relaxed">

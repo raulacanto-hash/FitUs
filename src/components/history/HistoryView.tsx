@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { History, Calendar } from 'lucide-react';
+import { History, Calendar, Plus } from 'lucide-react';
 import { WorkoutSession } from '../../types/workout';
 import { WorkoutHistoryCard } from './WorkoutHistoryCard';
 import { sortWorkoutsByDateDesc } from '../../utils/workoutStats';
@@ -9,12 +9,14 @@ interface HistoryViewProps {
   history: WorkoutSession[];
   onEditWorkout: (workout: WorkoutSession) => void;
   onDeleteWorkout: (workoutId: string) => void;
+  onAddPastWorkout: () => void;
 }
 
 export const HistoryView: React.FC<HistoryViewProps> = ({
   history,
   onEditWorkout,
-  onDeleteWorkout
+  onDeleteWorkout,
+  onAddPastWorkout
 }) => {
   const { accent, isDark } = useTheme();
   const orderedHistory = useMemo(() => sortWorkoutsByDateDesc(history), [history]);
@@ -33,12 +35,28 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
         </span>
       </div>
 
+      <button
+        type="button"
+        onClick={onAddPastWorkout}
+        className={`w-full py-3 rounded-2xl text-xs font-black border border-dashed flex items-center justify-center gap-1.5 transition-all active:scale-[0.99] ${
+          isDark
+            ? 'border-zinc-700 text-zinc-300 hover:bg-zinc-900'
+            : 'border-zinc-300 text-zinc-700 hover:bg-zinc-100'
+        }`}
+      >
+        <Plus className="w-4 h-4" style={{ color: accent.hex }} />
+        Registrar entrenamiento anterior
+      </button>
+
       {orderedHistory.length === 0 ? (
         <div className={`text-center py-14 px-4 border border-dashed rounded-3xl ${
           isDark ? 'border-zinc-800/80 bg-zinc-900/30' : 'border-zinc-300 bg-white'
         }`}>
           <Calendar className="w-8 h-8 text-zinc-400 mx-auto mb-2" />
           <p className="text-zinc-400 font-bold text-xs">Aún no hay ningún entrenamiento registrado</p>
+          <p className="text-[10px] text-zinc-500 mt-1">
+            Usa el botón de arriba para registrar uno con su fecha.
+          </p>
         </div>
       ) : (
         orderedHistory.map((workout) => (

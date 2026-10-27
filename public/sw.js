@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fitus-shell-v1';
+const CACHE_NAME = 'fitus-shell-v3';
 const APP_SHELL = [
   '/',
   '/index.html',

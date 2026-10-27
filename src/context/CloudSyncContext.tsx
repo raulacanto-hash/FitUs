@@ -8,9 +8,10 @@ import React, {
   useState
 } from 'react';
 import {
+  GoogleAuthProvider,
   getRedirectResult,
   onAuthStateChanged,
-  signInWithPopup,
+  signInWithCredential,
   signInWithRedirect,
   signOut as firebaseSignOut,
   type User
@@ -44,6 +45,7 @@ interface CloudSyncContextValue {
   error: string | null;
   localMode: boolean;
   signInWithGoogle: () => Promise<void>;
+  signInWithGoogleCredential: (idToken: string) => Promise<void>;
   signOut: () => Promise<void>;
   syncNow: (force?: boolean) => Promise<void>;
   enterLocalMode: () => void;
@@ -56,11 +58,6 @@ const LOCAL_MODE_KEY = 'fittrack_local_mode';
 
 const CloudSyncContext = createContext<CloudSyncContextValue | undefined>(undefined);
 
-function isMobileBrowser(): boolean {
-  if (typeof navigator === 'undefined') return false;
-  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-}
-
 function getCloudErrorMessage(error: unknown): string {
   if (typeof error === 'object' && error !== null && 'code' in error) {
     const code = String((error as { code: unknown }).code);
@@ -69,15 +66,25 @@ function getCloudErrorMessage(error: unknown): string {
       case 'auth/popup-closed-by-user':
         return 'Inicio de sesión cancelado.';
       case 'auth/popup-blocked':
-        return 'El navegador bloqueó la ventana de Google. Inténtalo de nuevo.';
+        return 'El navegador bloqueó la ventana de Google. Inténtalo de nuevo desde el botón.';
+      case 'auth/redirect-cancelled-by-user':
+        return 'Inicio de sesión cancelado.';
       case 'auth/unauthorized-domain':
         return 'Este dominio no está autorizado en Firebase Authentication.';
       case 'auth/operation-not-allowed':
         return 'El inicio de sesión con Google no está habilitado en Firebase.';
+      case 'auth/access-denied':
+        return 'Google rechazó el acceso. Agrega tu correo como usuario de prueba en la pantalla de consentimiento OAuth o publica la app.';
       case 'auth/invalid-api-key':
         return 'La API key de Firebase no es válida. Revisa el archivo .env.local.';
       case 'auth/configuration-not-found':
         return 'Falta configurar Authentication en el proyecto de Firebase.';
+      case 'auth/network-request-failed':
+        return 'No se pudo conectar con Google. Revisa tu conexión e inténtalo de nuevo.';
+      case 'auth/too-many-requests':
+        return 'Demasiados intentos. Espera unos minutos y vuelve a probar.';
+      case 'auth/account-exists-with-different-credential':
+        return 'Ya existe una cuenta con ese correo usando otro método de acceso.';
       case 'failed-precondition':
         return 'Firestore no está habilitado o falta crear la base de datos.';
       case 'permission-denied':
@@ -339,28 +346,32 @@ export const CloudSyncProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setLocalMode(false);
 
     try {
-      if (isMobileBrowser()) {
-        await signInWithRedirect(auth, googleProvider);
-        return;
-      }
-      await signInWithPopup(auth, googleProvider);
+      // La redirección funciona mejor que el popup en móviles, PWA y navegadores
+      // que bloquean ventanas emergentes o particionan el almacenamiento.
+      await signInWithRedirect(auth, googleProvider);
     } catch (signInError) {
-      const code =
-        typeof signInError === 'object' && signInError !== null && 'code' in signInError
-          ? String((signInError as { code: unknown }).code)
-          : '';
-
-      if (
-        code === 'auth/popup-blocked' ||
-        code === 'auth/operation-not-supported-in-this-environment'
-      ) {
-        await signInWithRedirect(auth, googleProvider);
-        return;
-      }
-
       console.error('Error al iniciar sesión con Google:', signInError);
       setError(getCloudErrorMessage(signInError));
       throw signInError;
+    }
+  }, []);
+
+  const signInWithGoogleCredential = useCallback(async (idToken: string) => {
+    if (!auth) {
+      throw new Error('Firebase no está configurado.');
+    }
+
+    setError(null);
+    sessionStorage.removeItem(LOCAL_MODE_KEY);
+    setLocalMode(false);
+
+    try {
+      const credential = GoogleAuthProvider.credential(idToken);
+      await signInWithCredential(auth, credential);
+    } catch (credentialError) {
+      console.error('Error al validar la credencial de Google:', credentialError);
+      setError(getCloudErrorMessage(credentialError));
+      throw credentialError;
     }
   }, []);
 
@@ -434,6 +445,7 @@ export const CloudSyncProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       error,
       localMode,
       signInWithGoogle,
+      signInWithGoogleCredential,
       signOut,
       syncNow,
       enterLocalMode,
@@ -449,6 +461,7 @@ export const CloudSyncProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       ready,
       retry,
       signInWithGoogle,
+      signInWithGoogleCredential,
       signOut,
       status,
       syncNow,

@@ -4,7 +4,8 @@ import {
   RoutineTemplate,
   UserProfile,
   WeightLogEntry,
-  WorkoutSession
+  WorkoutSession,
+  WorkoutSettings
 } from '../types/workout';
 import { getStoredItem, removeStoredItem, setStoredItem } from './storage';
 import { sortWorkoutsByDateDesc } from './workoutStats';
@@ -16,7 +17,8 @@ export const APP_STORAGE_KEYS = {
   ROUTINE_TEMPLATES: 'fittrack_routine_templates',
   WEIGHT_LOGS: 'fittrack_weight_logs',
   BODY_MEASUREMENTS: 'fittrack_body_measurements',
-  USER_PROFILE: 'fittrack_user_profile'
+  USER_PROFILE: 'fittrack_user_profile',
+  WORKOUT_SETTINGS: 'fittrack_workout_settings'
 } as const;
 
 export const SYNCED_STORAGE_KEYS: string[] = Object.values(APP_STORAGE_KEYS);
@@ -29,6 +31,7 @@ export interface AppSnapshot {
   weightLogs: WeightLogEntry[];
   bodyMeasurements: BodyMeasurementEntry[];
   userProfile: UserProfile | null;
+  workoutSettings: WorkoutSettings | null;
 }
 
 export function readLocalSnapshot(): AppSnapshot {
@@ -39,7 +42,8 @@ export function readLocalSnapshot(): AppSnapshot {
     routineTemplates: getStoredItem<RoutineTemplate[]>(APP_STORAGE_KEYS.ROUTINE_TEMPLATES, []),
     weightLogs: getStoredItem<WeightLogEntry[]>(APP_STORAGE_KEYS.WEIGHT_LOGS, []),
     bodyMeasurements: getStoredItem<BodyMeasurementEntry[]>(APP_STORAGE_KEYS.BODY_MEASUREMENTS, []),
-    userProfile: getStoredItem<UserProfile | null>(APP_STORAGE_KEYS.USER_PROFILE, null)
+    userProfile: getStoredItem<UserProfile | null>(APP_STORAGE_KEYS.USER_PROFILE, null),
+    workoutSettings: getStoredItem<WorkoutSettings | null>(APP_STORAGE_KEYS.WORKOUT_SETTINGS, null)
   };
 }
 
@@ -60,6 +64,12 @@ export function writeLocalSnapshot(snapshot: AppSnapshot): void {
     setStoredItem(APP_STORAGE_KEYS.USER_PROFILE, snapshot.userProfile);
   } else {
     removeStoredItem(APP_STORAGE_KEYS.USER_PROFILE);
+  }
+
+  if (snapshot.workoutSettings) {
+    setStoredItem(APP_STORAGE_KEYS.WORKOUT_SETTINGS, snapshot.workoutSettings);
+  } else {
+    removeStoredItem(APP_STORAGE_KEYS.WORKOUT_SETTINGS);
   }
 }
 
@@ -110,8 +120,18 @@ export function mergeSnapshots(local: AppSnapshot, cloud: AppSnapshot): AppSnaps
     bodyMeasurements: mergeById(local.bodyMeasurements, cloud.bodyMeasurements).sort((a, b) =>
       b.date.localeCompare(a.date)
     ),
-    userProfile: cloud.userProfile ?? local.userProfile
+    userProfile: cloud.userProfile ?? local.userProfile,
+    workoutSettings: mergeWorkoutSettings(local.workoutSettings, cloud.workoutSettings)
   };
+}
+
+function mergeWorkoutSettings(
+  local: WorkoutSettings | null,
+  cloud: WorkoutSettings | null
+): WorkoutSettings | null {
+  if (!local) return cloud;
+  if (!cloud) return local;
+  return (local.updatedAt ?? 0) >= (cloud.updatedAt ?? 0) ? local : cloud;
 }
 
 function mergeHistory(localHistory: WorkoutSession[], cloudHistory: WorkoutSession[]): WorkoutSession[] {

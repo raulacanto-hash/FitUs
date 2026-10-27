@@ -16,7 +16,8 @@ import {
   RoutineTemplate,
   UserProfile,
   WeightLogEntry,
-  WorkoutSession
+  WorkoutSession,
+  WorkoutSettings
 } from '../types/workout';
 
 interface CloudMainDocument {
@@ -27,6 +28,7 @@ interface CloudMainDocument {
   routineTemplates: RoutineTemplate[];
   weightLogs: WeightLogEntry[];
   bodyMeasurements: BodyMeasurementEntry[];
+  workoutSettings: WorkoutSettings | null;
 }
 
 export interface LoadedCloudSnapshot {
@@ -78,7 +80,8 @@ export async function loadCloudSnapshot(uid: string): Promise<LoadedCloudSnapsho
       routineTemplates: main?.routineTemplates ?? [],
       weightLogs: main?.weightLogs ?? [],
       bodyMeasurements: main?.bodyMeasurements ?? [],
-      userProfile: main?.profile ?? null
+      userProfile: main?.profile ?? null,
+      workoutSettings: main?.workoutSettings ?? null
     }
   };
 }
@@ -114,7 +117,8 @@ export class CloudSyncEngine {
       customExercises: snapshot.customExercises,
       routineTemplates: snapshot.routineTemplates,
       weightLogs: snapshot.weightLogs,
-      bodyMeasurements: snapshot.bodyMeasurements
+      bodyMeasurements: snapshot.bodyMeasurements,
+      workoutSettings: snapshot.workoutSettings
     });
 
     const mainFingerprint = JSON.stringify(mainData);

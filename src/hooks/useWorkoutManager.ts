@@ -19,20 +19,28 @@ export function createNewWorkoutSession(): WorkoutSession {
     routineName: 'Entrenamiento de Hoy',
     date: getLocalDateString(),
     startTime: undefined,
-    exercises: [
-      {
-        id: `ex-${Date.now()}-1`,
-        name: 'Press de banca plano con barra',
-        category: 'Pecho',
-        notes: '',
-        sets: [
-          { id: `st-1`, reps: 10, weight: 60, completed: false },
-          { id: `st-2`, reps: 10, weight: 60, completed: false },
-          { id: `st-3`, reps: 8, weight: 65, completed: false },
-        ]
-      }
-    ]
+    exercises: []
   };
+}
+
+/**
+ * Recupera la sesión guardada y limpia el placeholder que versiones anteriores
+ * creaban automáticamente (un press de banca sin empezar), para que no aparezca
+ * un entrenamiento activo al abrir la app.
+ */
+function loadInitialWorkoutSession(): WorkoutSession {
+  const stored = getStoredItem<WorkoutSession | null>(APP_STORAGE_KEYS.CURRENT_WORKOUT, null);
+  if (!stored) return createNewWorkoutSession();
+
+  const firstExercise = stored.exercises?.[0];
+  const isLegacyPlaceholder =
+    !stored.startTime &&
+    stored.routineName === 'Entrenamiento de Hoy' &&
+    (stored.exercises?.length ?? 0) === 1 &&
+    firstExercise?.name === 'Press de banca plano con barra' &&
+    (firstExercise?.sets ?? []).every((set) => !set.completed);
+
+  return isLegacyPlaceholder ? createNewWorkoutSession() : stored;
 }
 
 export function useWorkoutManager() {
@@ -52,9 +60,7 @@ export function useWorkoutManager() {
   });
 
   // Entrenamiento actual en curso
-  const [currentWorkout, setCurrentWorkout] = useState<WorkoutSession>(() => {
-    return getStoredItem<WorkoutSession>(APP_STORAGE_KEYS.CURRENT_WORKOUT, createNewWorkoutSession());
-  });
+  const [currentWorkout, setCurrentWorkout] = useState<WorkoutSession>(loadInitialWorkoutSession);
 
   // Modal / Edición de histórico
   const [editingWorkout, setEditingWorkout] = useState<WorkoutSession | null>(null);
@@ -113,6 +119,22 @@ export function useWorkoutManager() {
       }))
     };
     setCurrentWorkout(newSession);
+  }, []);
+
+  // Iniciar una sesión libre vacía (sin ejercicios precargados)
+  const handleStartEmptyWorkout = useCallback(() => {
+    setCurrentWorkout({
+      id: `w-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      routineName: 'Entrenamiento Libre',
+      date: getLocalDateString(),
+      startTime: Date.now(),
+      exercises: []
+    });
+  }, []);
+
+  const handleDiscardWorkout = useCallback(() => {
+    if (!window.confirm('¿Descartar la sesión actual? No se guardará en el historial.')) return;
+    setCurrentWorkout(createNewWorkoutSession());
   }, []);
 
   // Guardar la sesión actual como una nueva plantilla de rutina
@@ -247,14 +269,15 @@ export function useWorkoutManager() {
 
   // Agregar ejercicio desde catálogo
   const handleSelectExerciseFromDb = useCallback((exerciseObj: ExerciseDefinition) => {
+    const isHistoryEntry = Boolean(editingWorkout);
     const newEx: WorkoutExercise = {
       id: `ex-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       name: exerciseObj.name,
       category: exerciseObj.category,
       notes: '',
       sets: [
-        { id: `st-${Date.now()}-1`, reps: 10, weight: 20, completed: false },
-        { id: `st-${Date.now()}-2`, reps: 10, weight: 20, completed: false }
+        { id: `st-${Date.now()}-1`, reps: 10, weight: 20, completed: isHistoryEntry },
+        { id: `st-${Date.now()}-2`, reps: 10, weight: 20, completed: isHistoryEntry }
       ]
     };
 
@@ -327,13 +350,48 @@ export function useWorkoutManager() {
     setEditingWorkout(JSON.parse(JSON.stringify(workout)));
   }, []);
 
+  // Crear un registro manual de un entrenamiento anterior
+  const handleStartNewPastWorkout = useCallback(() => {
+    setEditingWorkout({
+      id: `workout-manual-${Date.now()}`,
+      routineName: 'Entrenamiento anterior',
+      date: getLocalDateString(),
+      durationMinutes: 60,
+      exercises: [],
+      updatedAt: Date.now()
+    });
+  }, []);
+
   const handleSaveEditWorkout = useCallback(() => {
     if (!editingWorkout) return;
+
+    const routineName = editingWorkout.routineName.trim();
+    if (!routineName) {
+      alert('Escribe un nombre para el entrenamiento.');
+      return;
+    }
+
+    if (
+      editingWorkout.exercises.length === 0 &&
+      !window.confirm('Este entrenamiento no tiene ejercicios. ¿Deseas guardarlo igualmente?')
+    ) {
+      return;
+    }
+
     const updatedWorkout: WorkoutSession = {
       ...editingWorkout,
+      routineName,
+      date: editingWorkout.date || getLocalDateString(),
+      durationMinutes: editingWorkout.durationMinutes || 45,
       updatedAt: Date.now()
     };
-    setHistory(prev => prev.map(w => w.id === updatedWorkout.id ? updatedWorkout : w));
+
+    setHistory(prev => {
+      const exists = prev.some(w => w.id === updatedWorkout.id);
+      return exists
+        ? prev.map(w => (w.id === updatedWorkout.id ? updatedWorkout : w))
+        : [updatedWorkout, ...prev];
+    });
     setEditingWorkout(null);
   }, [editingWorkout]);
 
@@ -431,6 +489,8 @@ export function useWorkoutManager() {
     editingWorkout,
     setEditingWorkout,
     handleStartRoutine,
+    handleStartEmptyWorkout,
+    handleDiscardWorkout,
     handleSaveCurrentAsRoutine,
     handleCreateRoutineTemplate,
     handleDeleteRoutineTemplate,
@@ -445,6 +505,7 @@ export function useWorkoutManager() {
     handleCreateCustomExercise,
     handleFinishWorkout,
     handleStartEditWorkout,
+    handleStartNewPastWorkout,
     handleSaveEditWorkout,
     handleDeleteWorkout,
     handleExportData,

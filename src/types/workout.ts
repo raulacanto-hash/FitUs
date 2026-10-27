@@ -126,4 +126,31 @@ export interface UserProfile {
   targetWeight?: number; // kg objetivo
 }
 
+// Preferencias del entrenamiento (pantalla "Ajustes del entrenamiento")
+export interface WorkoutSettings {
+  activeRoutineId?: string;
+  goal: string;
+  experience: string;
+  variety: string;
+  durationMinutes: number;
+  setRange: string;
+  repRange: string;
+  repProgression: boolean;
+  deload: string;
+  updateSavedWorkouts: boolean;
+  upcomingWorkouts: boolean;
+  queueEnabled: boolean;
+  focusedMuscles: MuscleCategory[];
+  excludedMuscles: MuscleCategory[];
+  injuries: string;
+  warmup: boolean;
+  stretching: boolean;
+  supersets: boolean;
+  dropsets: boolean;
+  warmupSets: boolean;
+  restTimer: boolean;
+  plateCalculator: boolean;
+  updatedAt: number;
+}
+
 export type ActiveTab = 'train' | 'library' | 'progress' | 'body' | 'history' | 'settings';

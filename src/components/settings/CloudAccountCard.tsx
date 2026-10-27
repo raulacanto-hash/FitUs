@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useCloudSync } from '../../context/CloudSyncContext';
 import { useTheme } from '../../context/ThemeContext';
+import { GoogleSignInButton } from '../cloud/GoogleSignInButton';
 
 const formatSyncTime = (date: Date | null): string => {
   if (!date) return 'Aún no sincronizado';
@@ -32,11 +33,14 @@ export const CloudAccountCard: React.FC = () => {
     error,
     localMode,
     signInWithGoogle,
+    signInWithGoogleCredential,
     signOut,
     syncNow
   } = useCloudSync();
 
   const [busy, setBusy] = useState<'google' | 'sync' | 'signout' | null>(null);
+  const [credentialError, setCredentialError] = useState<string | null>(null);
+  const displayError = credentialError ?? error;
 
   const cardClass = isDark
     ? 'bg-zinc-900/80 border-zinc-800/80 backdrop-blur-md'
@@ -44,8 +48,21 @@ export const CloudAccountCard: React.FC = () => {
 
   const handleGoogleSignIn = async () => {
     setBusy('google');
+    setCredentialError(null);
     try {
       await signInWithGoogle();
+    } catch {
+      // El contexto muestra el error
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleGoogleCredential = async (idToken: string) => {
+    setBusy('google');
+    setCredentialError(null);
+    try {
+      await signInWithGoogleCredential(idToken);
     } catch {
       // El contexto muestra el error
     } finally {
@@ -158,9 +175,9 @@ export const CloudAccountCard: React.FC = () => {
             Última sincronización: {formatSyncTime(lastSyncedAt)}
           </p>
 
-          {error && (
+          {displayError && (
             <p className="text-[10px] text-red-400 leading-relaxed border border-red-500/20 bg-red-500/10 rounded-lg px-2 py-1.5">
-              {error}
+              {displayError}
             </p>
           )}
 
@@ -203,27 +220,25 @@ export const CloudAccountCard: React.FC = () => {
               Estás en modo local: si borras los datos del navegador, perderás el historial.
             </p>
           )}
-          {error && (
+          {displayError && (
             <p className="text-[10px] text-red-400 leading-relaxed border border-red-500/20 bg-red-500/10 rounded-lg px-2 py-1.5">
-              {error}
+              {displayError}
             </p>
           )}
+          <GoogleSignInButton
+            onCredential={handleGoogleCredential}
+            onError={() => setCredentialError('No se pudo completar el acceso con Google. Inténtalo de nuevo.')}
+            width={280}
+          />
           <button
             type="button"
             onClick={handleGoogleSignIn}
             disabled={busy !== null}
-            className={`w-full font-black py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 border transition-all active:scale-95 disabled:opacity-60 ${accent.contrastText}`}
-            style={{ backgroundColor: accent.hex, borderColor: accent.hex }}
+            className={`w-full py-1.5 rounded-lg text-[10px] font-bold transition-colors disabled:opacity-60 ${
+              isDark ? 'text-zinc-500 hover:text-zinc-300' : 'text-zinc-500 hover:text-zinc-800'
+            }`}
           >
-            {busy === 'google' ? (
-              <span
-                className="w-3.5 h-3.5 rounded-full border-2 border-t-transparent animate-spin"
-                style={{ borderColor: 'currentColor', borderTopColor: 'transparent' }}
-              />
-            ) : (
-              <Cloud className="w-4 h-4" />
-            )}
-            {busy === 'google' ? 'Conectando...' : 'Continuar con Google'}
+            {busy === 'google' ? 'Redirigiendo...' : '¿No funciona? Usar redirección'}
           </button>
         </>
       )}

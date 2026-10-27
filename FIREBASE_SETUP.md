@@ -48,6 +48,19 @@ Puedes usar `.env.example` como plantilla. `.env.local` está ignorado por Git y
 
 Si al iniciar sesión Google muestra **"Acceso bloqueado"** o la app aparece como no verificada, entra a [Google Cloud Console](https://console.cloud.google.com/) → **APIs y servicios → Pantalla de consentimiento OAuth** y añade tu correo como **usuario de prueba** (o publica la app si quieres que cualquiera pueda entrar).
 
+### Origen autorizado para el botón de Google
+
+La app usa **Google Identity Services** para iniciar sesión sin salir de la app. Ese botón necesita que el dominio esté autorizado como **origen JavaScript**:
+
+1. Entra a [Credenciales de Google Cloud](https://console.cloud.google.com/apis/credentials?project=fitus-ccbd7).
+2. Abre el cliente **Web client (auto created by Google Service)**.
+3. En **Orígenes JavaScript autorizados**, añade:
+   - `https://fitus-ccbd7.web.app`
+   - `http://localhost:3000` (para desarrollo)
+4. Guarda y espera unos minutos.
+
+Si Google muestra `origin_mismatch`, falta este paso.
+
 ## 3. Crear Firestore y aplicar las reglas
 
 1. Ve a **Firestore Database → Crear base de datos**.
@@ -166,6 +179,7 @@ El historial de `localStorage` pertenece al dominio donde lo creaste, así que l
 | `auth/popup-blocked` | Permite ventanas emergentes o inicia sesión desde el móvil (usa redirección). |
 | `permission-denied` | Revisa que las reglas de Firestore estén publicadas y que el usuario esté autenticado. |
 | Google muestra "Acceso bloqueado" | Añade tu correo como usuario de prueba en la pantalla de consentimiento OAuth de Google Cloud. |
+| Google muestra `origin_mismatch` | Añade `https://fitus-ccbd7.web.app` en **Orígenes JavaScript autorizados** del cliente OAuth. |
 | La app no muestra el login | Faltan las variables en `.env.local` o no reiniciaste `npm run dev`. |
 | Los cambios no llegan a Firestore | Revisa la tarjeta de Ajustes y la consola del navegador; la app reintenta cada 30 segundos. |
 | Cambié `.env.local` y no se aplica | Vite lee las variables al arrancar: detén y vuelve a ejecutar `npm run dev`, o vuelve a compilar antes de desplegar. |

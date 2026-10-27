@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActiveTab, RoutineTemplate, WorkoutExercise } from './types/workout';
 import { useRestTimer } from './hooks/useRestTimer';
 import { useWorkoutManager } from './hooks/useWorkoutManager';
 import { useBodyMetrics } from './hooks/useBodyMetrics';
+import { useWorkoutSettings } from './hooks/useWorkoutSettings';
+import { INITIAL_USER_PROFILE } from './data/initialBodyData';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { CloudSyncProvider, useCloudSync } from './context/CloudSyncContext';
 import { CloudGate } from './components/cloud/CloudGate';
@@ -17,6 +19,8 @@ import { HistoryView } from './components/history/HistoryView';
 import { StatsView } from './components/stats/StatsView';
 import { BodyTrackerView } from './components/body/BodyTrackerView';
 import { SettingsView } from './components/settings/SettingsView';
+import { WorkoutSettingsView } from './components/workout-settings/WorkoutSettingsView';
+import { ProfileModal } from './components/profile/ProfileModal';
 import { ExerciseSelectorModal } from './components/modals/ExerciseSelectorModal';
 import { CreateRoutineModal } from './components/modals/CreateRoutineModal';
 import { EditWorkoutModal } from './components/modals/EditWorkoutModal';
@@ -24,8 +28,9 @@ import { Dumbbell, Sparkles, CloudOff } from 'lucide-react';
 
 const MainAppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('train');
-  const [trainViewMode, setTrainViewMode] = useState<'routines' | 'detail' | 'active'>('routines');
+  const [trainViewMode, setTrainViewMode] = useState<'routines' | 'detail' | 'active' | 'workoutSettings'>('routines');
   const [selectedRoutineForDetail, setSelectedRoutineForDetail] = useState<RoutineTemplate | null>(null);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   // Modal de detalle de ejercicio individual
   const [selectedExerciseForModal, setSelectedExerciseForModal] = useState<WorkoutExercise | null>(null);
@@ -36,18 +41,36 @@ const MainAppContent: React.FC = () => {
   const timer = useRestTimer();
   const manager = useWorkoutManager();
   const body = useBodyMetrics();
+  const workoutSettings = useWorkoutSettings();
   const { profile } = body;
   const { isDark, accent } = useTheme();
   const cloud = useCloudSync();
+  const prefilledProfileUidRef = useRef<string | null>(null);
 
   // Al completar una serie, iniciar automáticamente el descanso configurado
   const handleToggleSetWithTimer = (exerciseId: string, setId: string) => {
     manager.handleToggleSet(exerciseId, setId, () => {
-      timer.startTimer(timer.initialDuration || 90);
+      if (workoutSettings.settings.restTimer) {
+        timer.startTimer(timer.initialDuration || 90);
+      }
     });
   };
 
+  // Si el perfil sigue con el nombre de ejemplo, usar el nombre de Google
+  useEffect(() => {
+    const googleName = cloud.user?.displayName?.trim();
+    if (!googleName || !cloud.user) return;
+    if (prefilledProfileUidRef.current === cloud.user.uid) return;
+    if (profile.name.trim() === '' || profile.name === INITIAL_USER_PROFILE.name) {
+      prefilledProfileUidRef.current = cloud.user.uid;
+      body.updateProfile({ name: googleName });
+    }
+  }, [body, cloud.user, profile.name]);
+
   const handleStartRoutine = (routine: RoutineTemplate) => {
+    if (workoutSettings.settings.activeRoutineId !== routine.id) {
+      workoutSettings.updateSettings({ activeRoutineId: routine.id });
+    }
     manager.handleStartRoutine(routine);
     setSelectedRoutineForDetail(null);
     setTrainViewMode('active');
@@ -59,6 +82,9 @@ const MainAppContent: React.FC = () => {
   };
 
   const handleStartFreeWorkout = () => {
+    if (!manager.currentWorkout.startTime && manager.currentWorkout.exercises.length === 0) {
+      manager.handleStartEmptyWorkout();
+    }
     setTrainViewMode('active');
   };
 
@@ -81,14 +107,26 @@ const MainAppContent: React.FC = () => {
     }
   };
 
-  const hasActiveSession = manager.currentWorkout.exercises.length > 0;
+  const hasActiveSession =
+    Boolean(manager.currentWorkout.startTime) ||
+    manager.currentWorkout.exercises.some((exercise) =>
+      exercise.sets.some((set) => set.completed)
+    );
+
+  const isNewWorkout = Boolean(
+    manager.editingWorkout &&
+      !manager.history.some((workout) => workout.id === manager.editingWorkout?.id)
+  );
+
+  const isWorkoutSettingsView =
+    activeTab === 'train' && trainViewMode === 'workoutSettings';
 
   return (
-    <div className={`min-h-screen flex flex-col font-sans pb-24 antialiased transition-colors duration-200 ${
-      isDark ? 'bg-zinc-950 text-zinc-100' : 'bg-zinc-50 text-zinc-900'
-    }`}>
+    <div className={`min-h-screen flex flex-col font-sans antialiased transition-colors duration-200 ${
+      isWorkoutSettingsView ? 'pb-6' : 'pb-24'
+    } ${isDark ? 'bg-zinc-950 text-zinc-100' : 'bg-zinc-50 text-zinc-900'}`}>
       {/* Header Superior con Glassmorphism, Timer y botón de tema */}
-      <Header timer={timer} />
+      {!isWorkoutSettingsView && <Header timer={timer} />}
 
       {/* Contenedor Principal */}
       <main className="flex-1 max-w-lg w-full mx-auto px-4 pt-3">
@@ -140,7 +178,7 @@ const MainAppContent: React.FC = () => {
         {activeTab === 'train' && (
           <div className="space-y-3">
             {/* Banner de retorno a sesión activa si existe */}
-            {hasActiveSession && trainViewMode !== 'active' && (
+            {hasActiveSession && trainViewMode !== 'active' && trainViewMode !== 'workoutSettings' && (
               <div 
                 className={`p-3 rounded-2xl border flex items-center justify-between shadow-lg ${
                   isDark ? 'bg-zinc-900/90 border-zinc-800' : 'bg-white border-zinc-200'
@@ -165,7 +203,7 @@ const MainAppContent: React.FC = () => {
             )}
 
             {/* Alternador de Vista si estamos en Rutinas o Activo */}
-            {trainViewMode !== 'detail' && (
+            {(trainViewMode === 'routines' || trainViewMode === 'active') && (
               <div className={`flex rounded-2xl p-1 mb-2 border ${
                 isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-200 shadow-sm'
               }`}>
@@ -201,12 +239,15 @@ const MainAppContent: React.FC = () => {
                 completedThisWeek={manager.completedThisWeek}
                 routines={manager.routineTemplates}
                 recentWorkouts={manager.history}
+                activeRoutineId={workoutSettings.settings.activeRoutineId}
                 onViewAllHistory={handleViewAllHistory}
                 onStartRoutine={handleStartRoutine}
                 onViewRoutineDetails={handleViewRoutineDetails}
                 onStartFreeWorkout={handleStartFreeWorkout}
                 onOpenCreateRoutine={() => setIsCreateRoutineModalOpen(true)}
                 onDeleteRoutine={manager.handleDeleteRoutineTemplate}
+                onOpenProfile={() => setIsProfileModalOpen(true)}
+                onOpenWorkoutSettings={() => setTrainViewMode('workoutSettings')}
               />
             )}
 
@@ -236,6 +277,19 @@ const MainAppContent: React.FC = () => {
                 onFinishWorkout={handleFinishWorkout}
                 onSaveAsRoutine={manager.handleSaveCurrentAsRoutine}
                 onBackToRoutines={() => setTrainViewMode('routines')}
+                onDiscardWorkout={manager.handleDiscardWorkout}
+              />
+            )}
+
+            {/* Vista 1D: Ajustes del entrenamiento */}
+            {trainViewMode === 'workoutSettings' && (
+              <WorkoutSettingsView
+                settings={workoutSettings.settings}
+                profile={profile}
+                routines={manager.routineTemplates}
+                onUpdateSettings={workoutSettings.updateSettings}
+                onUpdateProfile={body.updateProfile}
+                onBack={() => setTrainViewMode('routines')}
               />
             )}
           </div>
@@ -272,12 +326,15 @@ const MainAppContent: React.FC = () => {
             history={manager.history}
             onEditWorkout={manager.handleStartEditWorkout}
             onDeleteWorkout={manager.handleDeleteWorkout}
+            onAddPastWorkout={manager.handleStartNewPastWorkout}
           />
         )}
 
         {/* PESTAÑA 6: AJUSTES & PERSONALIZACIÓN */}
         {activeTab === 'settings' && (
           <SettingsView
+            profile={profile}
+            onOpenProfile={() => setIsProfileModalOpen(true)}
             onExportData={manager.handleExportData}
             onImportData={manager.handleImportData}
             onResetAllData={handleResetAllData}
@@ -305,12 +362,21 @@ const MainAppContent: React.FC = () => {
       {/* Modal de Edición del Historial */}
       <EditWorkoutModal
         editingWorkout={manager.editingWorkout}
+        isNewWorkout={isNewWorkout}
         onClose={() => manager.setEditingWorkout(null)}
         onSave={manager.handleSaveEditWorkout}
         onUpdateWorkout={(updater) => {
           manager.setEditingWorkout((prev) => (prev ? updater(prev) : null));
         }}
         onOpenAddExercise={() => setIsExerciseModalOpen(true)}
+      />
+
+      {/* Modal de perfil de usuario */}
+      <ProfileModal
+        isOpen={isProfileModalOpen}
+        profile={profile}
+        onClose={() => setIsProfileModalOpen(false)}
+        onSave={body.updateProfile}
       />
 
       {/* Modal de Registro Detallado de Ejercicio (Screenshot 3) */}
@@ -325,11 +391,13 @@ const MainAppContent: React.FC = () => {
       />
 
       {/* Barra de Navegación Inferior Móvil */}
-      <BottomNav 
-        activeTab={activeTab} 
-        onTabChange={setActiveTab}
-        hasActiveWorkoutSession={hasActiveSession}
-      />
+      {!isWorkoutSettingsView && (
+        <BottomNav 
+          activeTab={activeTab} 
+          onTabChange={setActiveTab}
+          hasActiveWorkoutSession={hasActiveSession}
+        />
+      )}
     </div>
   );
 };

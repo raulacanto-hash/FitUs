@@ -10,12 +10,15 @@ interface RoutinesHubProps {
   completedThisWeek: number;
   routines: RoutineTemplate[];
   recentWorkouts: WorkoutSession[];
+  activeRoutineId?: string;
   onViewAllHistory: () => void;
   onStartRoutine: (routine: RoutineTemplate) => void;
   onViewRoutineDetails: (routine: RoutineTemplate) => void;
   onStartFreeWorkout: () => void;
   onOpenCreateRoutine: () => void;
   onDeleteRoutine: (id: string) => void;
+  onOpenProfile: () => void;
+  onOpenWorkoutSettings: () => void;
 }
 
 export const RoutinesHub: React.FC<RoutinesHubProps> = ({
@@ -23,37 +26,46 @@ export const RoutinesHub: React.FC<RoutinesHubProps> = ({
   completedThisWeek,
   routines,
   recentWorkouts,
+  activeRoutineId,
   onViewAllHistory,
   onStartRoutine,
   onViewRoutineDetails,
   onStartFreeWorkout,
   onOpenCreateRoutine,
-  onDeleteRoutine
+  onDeleteRoutine,
+  onOpenProfile,
+  onOpenWorkoutSettings
 }) => {
   const { accent, isDark } = useTheme();
   const weeklyGoal = profile.weeklyGoal || 3;
-  const featuredRoutine = routines[0];
+  const featuredRoutine = routines.find((routine) => routine.id === activeRoutineId) ?? routines[0];
+  const profileInitial = profile.name.trim().charAt(0).toUpperCase() || '?';
 
   return (
     <div className={`space-y-5 animate-in fade-in duration-200 ${isDark ? 'text-zinc-100' : 'text-zinc-900'}`}>
       {/* Header superior estilo Screenshot */}
       <div className="flex items-center justify-between pt-1">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-full bg-purple-600 flex items-center justify-center text-white font-black text-sm shadow-md shadow-purple-600/30">
-            {profile.name.charAt(0).toUpperCase()}
+          <div className="w-9 h-9 rounded-full bg-purple-600 flex items-center justify-center text-white font-black text-sm shadow-md shadow-purple-600/30 flex-shrink-0">
+            {profileInitial}
           </div>
-          <button type="button" className="flex items-center gap-1 font-bold text-sm hover:opacity-80">
-            {profile.name}
-            <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
+          <button
+            type="button"
+            onClick={onOpenProfile}
+            className="flex items-center gap-1 font-bold text-sm hover:opacity-80 min-w-0"
+          >
+            <span className="truncate max-w-[170px]">{profile.name}</span>
+            <ChevronDown className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
           </button>
         </div>
 
         <button 
           type="button" 
+          onClick={onOpenWorkoutSettings}
           className={`p-2 rounded-xl border transition-colors ${
             isDark ? 'bg-zinc-900 border-zinc-800 text-zinc-400' : 'bg-white border-zinc-200 text-zinc-600 shadow-sm'
           }`}
-          title="Filtros y preferencias"
+          title="Ajustes del entrenamiento"
         >
           <SlidersHorizontal className="w-4 h-4" />
         </button>

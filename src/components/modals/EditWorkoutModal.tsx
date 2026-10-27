@@ -5,6 +5,7 @@ import { useTheme } from '../../context/ThemeContext';
 
 interface EditWorkoutModalProps {
   editingWorkout: WorkoutSession | null;
+  isNewWorkout?: boolean;
   onClose: () => void;
   onSave: () => void;
   onUpdateWorkout: (updater: (prev: WorkoutSession) => WorkoutSession) => void;
@@ -13,6 +14,7 @@ interface EditWorkoutModalProps {
 
 export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
   editingWorkout,
+  isNewWorkout = false,
   onClose,
   onSave,
   onUpdateWorkout,
@@ -82,7 +84,9 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
       }`}>
         {/* Header */}
         <div className={`flex justify-between items-center border-b pb-2.5 ${isDark ? 'border-zinc-800' : 'border-zinc-200'}`}>
-          <h3 className="font-bold text-sm">Editar Entrenamiento Pasado</h3>
+          <h3 className="font-bold text-sm">
+            {isNewWorkout ? 'Registrar Entrenamiento Anterior' : 'Editar Entrenamiento Pasado'}
+          </h3>
           <button 
             type="button"
             onClick={onClose} 
@@ -94,19 +98,21 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
 
         {/* Formulario */}
         <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+          <div className="space-y-1">
+            <label className="text-[10px] text-zinc-400 block mb-1">Nombre del entrenamiento</label>
+            <input
+              type="text"
+              value={editingWorkout.routineName}
+              onChange={(e) => onUpdateWorkout(prev => ({ ...prev, routineName: e.target.value }))}
+              className={`w-full rounded-xl p-2 text-xs border focus:outline-none ${
+                isDark ? 'bg-zinc-950 border-zinc-800 text-white' : 'bg-zinc-50 border-zinc-200 text-zinc-900'
+              }`}
+              style={{ borderColor: editingWorkout.routineName ? accent.hex : undefined }}
+              placeholder="Ej. Pecho y tríceps"
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-[10px] text-zinc-400 block mb-1">Nombre Rutina</label>
-              <input
-                type="text"
-                value={editingWorkout.routineName}
-                onChange={(e) => onUpdateWorkout(prev => ({ ...prev, routineName: e.target.value }))}
-                className={`w-full rounded-xl p-2 text-xs border focus:outline-none ${
-                  isDark ? 'bg-zinc-950 border-zinc-800 text-white' : 'bg-zinc-50 border-zinc-200 text-zinc-900'
-                }`}
-                style={{ borderColor: editingWorkout.routineName ? accent.hex : undefined }}
-              />
-            </div>
             <div>
               <label className="text-[10px] text-zinc-400 block mb-1">Fecha</label>
               <input
@@ -116,6 +122,27 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
                 className={`w-full rounded-xl p-2 text-xs border focus:outline-none ${
                   isDark ? 'bg-zinc-950 border-zinc-800 text-white' : 'bg-zinc-50 border-zinc-200 text-zinc-900'
                 }`}
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-zinc-400 block mb-1">Duración (min)</label>
+              <input
+                type="number"
+                min="1"
+                max="600"
+                inputMode="numeric"
+                value={editingWorkout.durationMinutes ?? ''}
+                onChange={(e) =>
+                  onUpdateWorkout(prev => ({
+                    ...prev,
+                    durationMinutes:
+                      e.target.value === '' ? undefined : Math.max(1, Number(e.target.value) || 1)
+                  }))
+                }
+                className={`w-full rounded-xl p-2 text-xs border focus:outline-none ${
+                  isDark ? 'bg-zinc-950 border-zinc-800 text-white' : 'bg-zinc-50 border-zinc-200 text-zinc-900'
+                }`}
+                placeholder="45"
               />
             </div>
           </div>
@@ -221,7 +248,7 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
             style={{ backgroundColor: accent.hex }}
             className={`flex-1 font-black py-2 rounded-xl text-xs transition-colors active:scale-95 ${accent.contrastText}`}
           >
-            Guardar Cambios
+            {isNewWorkout ? 'Guardar Entrenamiento' : 'Guardar Cambios'}
           </button>
         </div>
       </div>

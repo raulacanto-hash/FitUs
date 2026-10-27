@@ -20,6 +20,7 @@ interface ActiveWorkoutViewProps {
   onFinishWorkout: () => void;
   onSaveAsRoutine?: (name: string, category: string) => void;
   onBackToRoutines?: () => void;
+  onDiscardWorkout?: () => void;
 }
 
 export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({
@@ -35,7 +36,8 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({
   onOpenExerciseModal,
   onFinishWorkout,
   onSaveAsRoutine,
-  onBackToRoutines
+  onBackToRoutines,
+  onDiscardWorkout
 }) => {
   const { accent, isDark } = useTheme();
   const [isSavingRoutinePrompt, setIsSavingRoutinePrompt] = useState(false);
@@ -54,15 +56,26 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({
     <div className={`space-y-4 animate-in fade-in duration-200 ${isDark ? 'text-zinc-100' : 'text-zinc-900'}`}>
       {/* Botón superior de volver a rutinas si existe callback */}
       {onBackToRoutines && (
-        <button
-          type="button"
-          onClick={onBackToRoutines}
-          className={`text-xs flex items-center gap-1.5 transition-colors font-bold ${
-            isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-600 hover:text-zinc-950'
-          }`}
-        >
-          <ArrowLeft className="w-3.5 h-3.5" style={{ color: accent.hex }} /> Volver al catálogo de rutinas
-        </button>
+        <div className="flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={onBackToRoutines}
+            className={`text-xs flex items-center gap-1.5 transition-colors font-bold ${
+              isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-600 hover:text-zinc-950'
+            }`}
+          >
+            <ArrowLeft className="w-3.5 h-3.5" style={{ color: accent.hex }} /> Volver al catálogo de rutinas
+          </button>
+          {onDiscardWorkout && currentWorkout.exercises.length > 0 && (
+            <button
+              type="button"
+              onClick={onDiscardWorkout}
+              className="text-[10px] font-bold text-red-400 hover:text-red-300 transition-colors"
+            >
+              Descartar sesión
+            </button>
+          )}
+        </div>
       )}
 
       {/* Tarjeta de Inicio / Nombre de Rutina */}
