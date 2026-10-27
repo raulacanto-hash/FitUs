@@ -2,6 +2,7 @@ import React from 'react';
 import { Calendar, Clock, Edit, Trash2, FileText } from 'lucide-react';
 import { WorkoutSession } from '../../types/workout';
 import { formatDisplayDate } from '../../utils/dates';
+import { formatDuration } from '../../utils/duration';
 import { useTheme } from '../../context/ThemeContext';
 
 interface WorkoutHistoryCardProps {
@@ -31,7 +32,7 @@ export const WorkoutHistoryCard: React.FC<WorkoutHistoryCardProps> = ({
               <Calendar className="w-3 h-3" style={{ color: accent.hex }} /> {formatDisplayDate(workout.date)}
             </span>
             <span className="flex items-center gap-1 font-mono">
-              <Clock className="w-3 h-3" style={{ color: accent.hex }} /> {workout.durationMinutes || 45} min
+              <Clock className="w-3 h-3" style={{ color: accent.hex }} /> {formatDuration(workout.durationMinutes ?? 45)}
             </span>
           </div>
         </div>

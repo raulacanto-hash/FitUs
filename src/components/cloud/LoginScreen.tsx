@@ -65,7 +65,7 @@ export const LoginScreen: React.FC = () => {
               <Dumbbell className="w-5 h-5" style={{ color: accent.hex }} />
             </div>
             <div>
-              <h1 className="text-base font-black tracking-tight">FitUs</h1>
+              <h1 className="text-base font-black tracking-tight">FitUs Pro</h1>
               <p className="text-[9px] font-mono uppercase tracking-widest text-zinc-500">
                 Tu historial en la nube
               </p>

@@ -1,4 +1,4 @@
-# Poner FitTrack en línea con Firebase
+# Poner FitUs en línea con Firebase
 
 ## Estado de este proyecto
 

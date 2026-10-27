@@ -12,6 +12,7 @@ import { PREDEFINED_ROUTINES } from '../data/predefinedRoutines';
 import { getLocalDateString } from '../utils/dates';
 import { getStoredItem, setStoredItem, clearAllStorage } from '../utils/storage';
 import { APP_STORAGE_KEYS } from '../utils/appData';
+import { sortWorkoutsByDateDesc } from '../utils/workoutStats';
 
 export function createNewWorkoutSession(): WorkoutSession {
   return {
@@ -401,6 +402,52 @@ export function useWorkoutManager() {
     }
   }, []);
 
+  // Combinar datos importados desde Excel/CSV sin borrar lo que ya existe
+  const mergeImportedWorkoutData = useCallback(
+    (data: {
+      history?: WorkoutSession[];
+      routineTemplates?: RoutineTemplate[];
+      customExercises?: ExerciseDefinition[];
+    }) => {
+      const mergeById = <T extends { id: string }>(current: T[], imported: T[]): T[] => {
+        const byId = new Map<string, T>(current.map((item) => [item.id, item]));
+        imported.forEach((item) => byId.set(item.id, item));
+        return Array.from(byId.values());
+      };
+
+      if (data.history) {
+        setHistory((prev) => sortWorkoutsByDateDesc(mergeById(prev, data.history ?? [])));
+      }
+      if (data.routineTemplates) {
+        setRoutineTemplates((prev) => {
+          const byId = new Map(prev.map((routine) => [routine.id, routine]));
+          (data.routineTemplates ?? []).forEach((imported) => {
+            const existing = byId.get(imported.id);
+            byId.set(
+              imported.id,
+              existing
+                ? {
+                    ...existing,
+                    ...imported,
+                    heroGradient: imported.heroGradient ?? existing.heroGradient,
+                    targetMuscles: imported.targetMuscles ?? existing.targetMuscles,
+                    daysPerWeek: imported.daysPerWeek ?? existing.daysPerWeek,
+                    recoveryScore: imported.recoveryScore ?? existing.recoveryScore,
+                    isActiveRoutine: imported.isActiveRoutine ?? existing.isActiveRoutine
+                  }
+                : imported
+            );
+          });
+          return Array.from(byId.values());
+        });
+      }
+      if (data.customExercises) {
+        setCustomExercises((prev) => mergeById(prev, data.customExercises ?? []));
+      }
+    },
+    []
+  );
+
   // Cálculo de entrenamientos completados en la semana actual
   const completedThisWeek = useMemo(() => {
     const today = new Date();
@@ -508,6 +555,7 @@ export function useWorkoutManager() {
     handleStartNewPastWorkout,
     handleSaveEditWorkout,
     handleDeleteWorkout,
+    mergeImportedWorkoutData,
     handleExportData,
     handleImportData,
     handleResetAllData

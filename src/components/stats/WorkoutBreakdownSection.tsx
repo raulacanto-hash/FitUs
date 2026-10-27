@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { ChevronDown, Clock, Dumbbell, Minus, TrendingDown, TrendingUp } from 'lucide-react';
 import { WorkoutSession } from '../../types/workout';
 import { formatRelativeDate } from '../../utils/dates';
+import { formatDuration } from '../../utils/duration';
 import {
   ExercisePerformance,
   formatVolume,
@@ -151,7 +152,7 @@ export const WorkoutBreakdownSection: React.FC<WorkoutBreakdownSectionProps> = (
                   </span>
                   <span className="flex items-center gap-1.5 text-[10px] text-zinc-500 font-mono mt-1">
                     <Clock className="w-3 h-3" style={{ color: accent.hex }} />
-                    {workout.durationMinutes || 45} min
+                    {formatDuration(workout.durationMinutes ?? 45)}
                     <span className="text-zinc-600">•</span>
                     {summary.exerciseCount} {summary.exerciseCount === 1 ? 'ejercicio' : 'ejercicios'}
                     <span className="text-zinc-600">•</span>

@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Clock, Dumbbell, History } from 'lucide-react';
 import { WorkoutSession } from '../../types/workout';
 import { formatRelativeDate } from '../../utils/dates';
+import { formatDuration } from '../../utils/duration';
 import { getWorkoutSummary, sortWorkoutsByDateDesc } from '../../utils/workoutStats';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -95,7 +96,7 @@ export const RecentWorkoutsSection: React.FC<RecentWorkoutsSectionProps> = ({
                     </span>
                     <span className="flex items-center gap-1.5 text-[10px] text-zinc-500 font-mono mt-1">
                       <Clock className="w-3 h-3" style={{ color: accent.hex }} />
-                      {workout.durationMinutes || 45} min
+                      {formatDuration(workout.durationMinutes ?? 45)}
                       <span className="text-zinc-600">•</span>
                       {summary.exerciseCount} {summary.exerciseCount === 1 ? 'ejercicio' : 'ejercicios'}
                       <span className="text-zinc-600">•</span>
@@ -146,7 +147,7 @@ export const RecentWorkoutsSection: React.FC<RecentWorkoutsSectionProps> = ({
                                       : 'bg-white text-zinc-400 border-zinc-200'
                                 }`}
                               >
-                                {set.weight === '' ? 0 : set.weight}kg × {set.reps === '' ? 0 : set.reps}
+                                {set.weight === '' ? 0 : set.weight}kg × {set.reps === '' ? 0 : set.reps}-reps
                               </span>
                             ))}
                           </div>

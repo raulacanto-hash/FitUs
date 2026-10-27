@@ -12,7 +12,7 @@ export const EXPERIENCE_OPTIONS = ['Principiante', 'Intermedio', 'Avanzado'];
 
 export const VARIETY_OPTIONS = ['Bajo', 'Balanceado', 'Alto'];
 
-export const DURATION_OPTIONS = [30, 45, 60, 75, 90];
+export const DURATION_OPTIONS = [30, 45, 60, 75, 90, 105, 120];
 
 export const SET_RANGE_OPTIONS = ['2, 3', '3', '3, 4', '4', '4, 5'];
 

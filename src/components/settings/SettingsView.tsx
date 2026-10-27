@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Settings, Download, Upload, AlertTriangle, Moon, Sun, Palette, Check, ChevronRight, User } from 'lucide-react';
+import { Settings, FileSpreadsheet, FileText, Upload, AlertTriangle, Moon, Sun, Palette, Check, ChevronRight, User } from 'lucide-react';
 import { useTheme, ACCENT_PALETTES, AccentColor } from '../../context/ThemeContext';
 import { UserProfile } from '../../types/workout';
 import { CloudAccountCard } from './CloudAccountCard';
@@ -7,7 +7,8 @@ import { CloudAccountCard } from './CloudAccountCard';
 interface SettingsViewProps {
   profile: UserProfile;
   onOpenProfile: () => void;
-  onExportData: () => void;
+  onExportExcel: () => void;
+  onExportCsv: () => void;
   onImportData: (file: File) => void;
   onResetAllData: () => void;
 }
@@ -15,7 +16,8 @@ interface SettingsViewProps {
 export const SettingsView: React.FC<SettingsViewProps> = ({
   profile,
   onOpenProfile,
-  onExportData,
+  onExportExcel,
+  onExportCsv,
   onImportData,
   onResetAllData
 }) => {
@@ -171,35 +173,51 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div>
           <h3 className="text-xs font-black uppercase tracking-wider mb-1">Copia de Seguridad y Restauración</h3>
           <p className={`text-xs mb-3 ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
-            Guarda tus rutinas, pesajes e historial en un archivo JSON local o expórtalo a otro dispositivo.
+            Exporta tus entrenamientos, rutinas, pesajes y medidas a Excel o CSV. También puedes
+            importar una copia en Excel, CSV o JSON.
           </p>
-          <div className="flex gap-2">
+
+          <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
-              onClick={onExportData}
-              className={`flex-1 font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-2 border transition-colors active:scale-95 ${
-                isDark 
-                  ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border-zinc-700/60' 
+              onClick={onExportExcel}
+              style={{ backgroundColor: accent.hex, borderColor: accent.hex }}
+              className={`font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-2 border transition-colors active:scale-95 ${accent.contrastText}`}
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" /> Exportar Excel
+            </button>
+            <button
+              type="button"
+              onClick={onExportCsv}
+              className={`font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-2 border transition-colors active:scale-95 ${
+                isDark
+                  ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border-zinc-700/60'
                   : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-800 border-zinc-300'
               }`}
             >
-              <Download className="w-3.5 h-3.5" style={{ color: accent.hex }} /> Exportar Copia
+              <FileText className="w-3.5 h-3.5" style={{ color: accent.hex }} /> Exportar CSV
             </button>
-            <label className={`flex-1 font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-2 border cursor-pointer transition-colors active:scale-95 ${
-              isDark 
-                ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border-zinc-700/60' 
-                : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-800 border-zinc-300'
-            }`}>
-              <Upload className="w-3.5 h-3.5 text-teal-400" /> Importar Copia
-              <input 
-                ref={fileInputRef}
-                type="file" 
-                accept=".json" 
-                onChange={handleFileChange} 
-                className="hidden" 
-              />
-            </label>
           </div>
+
+          <label className={`mt-2 w-full font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-2 border cursor-pointer transition-colors active:scale-95 ${
+            isDark
+              ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border-zinc-700/60'
+              : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-800 border-zinc-300'
+          }`}>
+            <Upload className="w-3.5 h-3.5 text-teal-400" /> Importar Excel, CSV o JSON
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls,.csv,.json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,application/json"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+          </label>
+
+          <p className={`mt-2 text-[10px] leading-relaxed ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>
+            Excel incluye todas las hojas: entrenamientos, rutinas, ejercicios personalizados,
+            pesajes, medidas y perfil. El CSV incluye la hoja de entrenamientos.
+          </p>
         </div>
 
         {/* Zona de Peligro */}

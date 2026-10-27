@@ -46,7 +46,7 @@ export const ExerciseSelectorModal: React.FC<ExerciseSelectorModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-zinc-950/80 backdrop-blur-md flex items-center justify-center p-3 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[60] bg-zinc-950/80 backdrop-blur-md flex items-center justify-center p-3 animate-in fade-in duration-200">
       <div className={`border rounded-3xl max-w-lg w-full h-[85vh] flex flex-col shadow-2xl overflow-hidden ${
         isDark ? 'bg-zinc-900 border-zinc-800 text-zinc-100' : 'bg-white border-zinc-200 text-zinc-900'
       }`}>

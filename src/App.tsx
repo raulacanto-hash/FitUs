@@ -5,6 +5,7 @@ import { useWorkoutManager } from './hooks/useWorkoutManager';
 import { useBodyMetrics } from './hooks/useBodyMetrics';
 import { useWorkoutSettings } from './hooks/useWorkoutSettings';
 import { INITIAL_USER_PROFILE } from './data/initialBodyData';
+import { exportToExcel, exportWorkoutsCsv, parseImportFile } from './utils/spreadsheet';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { CloudSyncProvider, useCloudSync } from './context/CloudSyncContext';
 import { CloudGate } from './components/cloud/CloudGate';
@@ -96,6 +97,83 @@ const MainAppContent: React.FC = () => {
   const handleResetAllData = () => {
     if (manager.handleResetAllData()) {
       body.resetBodyMetrics();
+    }
+  };
+
+  const buildExportData = () => ({
+    history: manager.history,
+    routineTemplates: manager.routineTemplates,
+    customExercises: manager.customExercises,
+    weightLogs: body.weightLogs,
+    bodyMeasurements: body.measurements,
+    userProfile: profile
+  });
+
+  const handleExportExcel = async () => {
+    try {
+      await exportToExcel(buildExportData());
+    } catch (error) {
+      console.error('Error al exportar a Excel:', error);
+      alert('No se pudo generar el archivo Excel. Inténtalo de nuevo.');
+    }
+  };
+
+  const handleExportCsv = async () => {
+    try {
+      await exportWorkoutsCsv(manager.history);
+    } catch (error) {
+      console.error('Error al exportar a CSV:', error);
+      alert('No se pudo generar el archivo CSV. Inténtalo de nuevo.');
+    }
+  };
+
+  const handleImportData = async (file: File) => {
+    try {
+      const imported = await parseImportFile(file);
+      manager.mergeImportedWorkoutData(imported);
+      body.mergeImportedBodyData(imported);
+
+      const parts: string[] = [];
+      const countLabel = (count: number, singular: string, plural: string) =>
+        `${count} ${count === 1 ? singular : plural}`;
+
+      if (imported.history?.length) {
+        parts.push(countLabel(imported.history.length, 'entrenamiento', 'entrenamientos'));
+      }
+      if (imported.routineTemplates?.length) {
+        parts.push(countLabel(imported.routineTemplates.length, 'rutina', 'rutinas'));
+      }
+      if (imported.customExercises?.length) {
+        parts.push(
+          countLabel(
+            imported.customExercises.length,
+            'ejercicio personalizado',
+            'ejercicios personalizados'
+          )
+        );
+      }
+      if (imported.weightLogs?.length) {
+        parts.push(countLabel(imported.weightLogs.length, 'pesaje', 'pesajes'));
+      }
+      if (imported.bodyMeasurements?.length) {
+        parts.push(countLabel(imported.bodyMeasurements.length, 'medida', 'medidas'));
+      }
+      if (imported.userProfile) {
+        parts.push('perfil');
+      }
+
+      alert(
+        parts.length > 0
+          ? `Importación completada: ${parts.join(', ')}. Los datos se combinaron con los existentes.`
+          : 'El archivo no tenía datos nuevos para importar.'
+      );
+    } catch (error) {
+      console.error('Error al importar la copia:', error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : 'No se pudo importar el archivo. Revisa que sea una copia válida de FitUs.'
+      );
     }
   };
 
@@ -335,8 +413,9 @@ const MainAppContent: React.FC = () => {
           <SettingsView
             profile={profile}
             onOpenProfile={() => setIsProfileModalOpen(true)}
-            onExportData={manager.handleExportData}
-            onImportData={manager.handleImportData}
+            onExportExcel={handleExportExcel}
+            onExportCsv={handleExportCsv}
+            onImportData={handleImportData}
             onResetAllData={handleResetAllData}
           />
         )}

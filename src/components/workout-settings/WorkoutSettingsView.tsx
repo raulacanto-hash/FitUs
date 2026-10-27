@@ -43,6 +43,7 @@ import {
   VARIETY_OPTIONS
 } from '../../data/workoutSettingsDefaults';
 import { useTheme } from '../../context/ThemeContext';
+import { formatDuration } from '../../utils/duration';
 
 interface WorkoutSettingsViewProps {
   settings: WorkoutSettings;
@@ -507,12 +508,12 @@ export const WorkoutSettingsView: React.FC<WorkoutSettingsViewProps> = ({
               <SettingsRow
                 icon={Timer}
                 label="Duración"
-                value={`${settings.durationMinutes} min`}
+                value={formatDuration(settings.durationMinutes)}
                 onClick={() =>
                   setPicker({
                     title: 'Duración del entrenamiento',
                     options: DURATION_OPTIONS.map((minutes) => ({
-                      label: `${minutes} min`,
+                      label: formatDuration(minutes),
                       value: String(minutes)
                     })),
                     selected: String(settings.durationMinutes),

@@ -93,6 +93,37 @@ export function useBodyMetrics() {
     setMeasurements([]);
   }, []);
 
+  const mergeImportedBodyData = useCallback(
+    (data: {
+      weightLogs?: WeightLogEntry[];
+      bodyMeasurements?: BodyMeasurementEntry[];
+      userProfile?: UserProfile;
+    }) => {
+      const mergeById = <T extends { id: string }>(current: T[], imported: T[]): T[] => {
+        const byId = new Map<string, T>(current.map((item) => [item.id, item]));
+        imported.forEach((item) => byId.set(item.id, item));
+        return Array.from(byId.values());
+      };
+
+      if (data.weightLogs) {
+        setWeightLogs((prev) =>
+          mergeById(prev, data.weightLogs ?? []).sort((a, b) => b.date.localeCompare(a.date))
+        );
+      }
+      if (data.bodyMeasurements) {
+        setMeasurements((prev) =>
+          mergeById(prev, data.bodyMeasurements ?? []).sort((a, b) =>
+            b.date.localeCompare(a.date)
+          )
+        );
+      }
+      if (data.userProfile) {
+        setProfile((prev) => ({ ...prev, ...data.userProfile }));
+      }
+    },
+    []
+  );
+
   // Métricas calculadas de peso
   const weightStats = useMemo(() => {
     const sorted = [...weightLogs].sort((a, b) => a.date.localeCompare(b.date));
@@ -137,6 +168,7 @@ export function useBodyMetrics() {
     profile,
     updateProfile,
     resetBodyMetrics,
+    mergeImportedBodyData,
     weightLogs,
     addWeightEntry,
     deleteWeightEntry,

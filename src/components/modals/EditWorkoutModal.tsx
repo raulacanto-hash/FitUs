@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, Trash2, Plus, Dumbbell } from 'lucide-react';
 import { WorkoutSession } from '../../types/workout';
+import { formatDuration, splitDuration, durationFromParts } from '../../utils/duration';
 import { useTheme } from '../../context/ThemeContext';
 
 interface EditWorkoutModalProps {
@@ -23,6 +24,16 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
   const { accent, isDark } = useTheme();
 
   if (!editingWorkout) return null;
+
+  const totalDuration = editingWorkout.durationMinutes ?? 45;
+  const { hours, minutes } = splitDuration(totalDuration);
+
+  const updateDuration = (nextHours: number, nextMinutes: number) => {
+    onUpdateWorkout((prev) => ({
+      ...prev,
+      durationMinutes: durationFromParts(nextHours, nextMinutes)
+    }));
+  };
 
   const handleAddSetToExercise = (exerciseId: string) => {
     onUpdateWorkout((prev) => ({
@@ -112,39 +123,68 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-[10px] text-zinc-400 block mb-1">Fecha</label>
-              <input
-                type="date"
-                value={editingWorkout.date}
-                onChange={(e) => onUpdateWorkout(prev => ({ ...prev, date: e.target.value }))}
-                className={`w-full rounded-xl p-2 text-xs border focus:outline-none ${
-                  isDark ? 'bg-zinc-950 border-zinc-800 text-white' : 'bg-zinc-50 border-zinc-200 text-zinc-900'
-                }`}
-              />
+          <div className="space-y-1">
+            <label className="text-[10px] text-zinc-400 block mb-1">Fecha</label>
+            <input
+              type="date"
+              value={editingWorkout.date}
+              onChange={(e) => onUpdateWorkout(prev => ({ ...prev, date: e.target.value }))}
+              className={`w-full rounded-xl p-2 text-xs border focus:outline-none ${
+                isDark ? 'bg-zinc-950 border-zinc-800 text-white' : 'bg-zinc-50 border-zinc-200 text-zinc-900'
+              }`}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] text-zinc-400 block">Duración</label>
+              <span className="text-[10px] font-bold" style={{ color: accent.hex }}>
+                {formatDuration(totalDuration)}
+              </span>
             </div>
-            <div>
-              <label className="text-[10px] text-zinc-400 block mb-1">Duración (min)</label>
-              <input
-                type="number"
-                min="1"
-                max="600"
-                inputMode="numeric"
-                value={editingWorkout.durationMinutes ?? ''}
-                onChange={(e) =>
-                  onUpdateWorkout(prev => ({
-                    ...prev,
-                    durationMinutes:
-                      e.target.value === '' ? undefined : Math.max(1, Number(e.target.value) || 1)
-                  }))
-                }
-                className={`w-full rounded-xl p-2 text-xs border focus:outline-none ${
-                  isDark ? 'bg-zinc-950 border-zinc-800 text-white' : 'bg-zinc-50 border-zinc-200 text-zinc-900'
-                }`}
-                placeholder="45"
-              />
+            <div className="grid grid-cols-2 gap-2">
+              <div className="relative">
+                <input
+                  type="number"
+                  min="0"
+                  max="23"
+                  inputMode="numeric"
+                  value={hours}
+                  onChange={(e) => {
+                    const nextHours = Math.min(23, Math.max(0, Number(e.target.value) || 0));
+                    updateDuration(nextHours, minutes);
+                  }}
+                  className={`w-full rounded-xl p-2 pr-7 text-xs border focus:outline-none ${
+                    isDark ? 'bg-zinc-950 border-zinc-800 text-white' : 'bg-zinc-50 border-zinc-200 text-zinc-900'
+                  }`}
+                  aria-label="Horas de duración"
+                />
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-zinc-500 font-mono">
+                  h
+                </span>
+              </div>
+              <div className="relative">
+                <input
+                  type="number"
+                  min="0"
+                  max="59"
+                  inputMode="numeric"
+                  value={minutes}
+                  onChange={(e) => {
+                    const nextMinutes = Math.min(59, Math.max(0, Number(e.target.value) || 0));
+                    updateDuration(hours, nextMinutes);
+                  }}
+                  className={`w-full rounded-xl p-2 pr-9 text-xs border focus:outline-none ${
+                    isDark ? 'bg-zinc-950 border-zinc-800 text-white' : 'bg-zinc-50 border-zinc-200 text-zinc-900'
+                  }`}
+                  aria-label="Minutos de duración"
+                />
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-zinc-500 font-mono">
+                  min
+                </span>
+              </div>
             </div>
+            <p className="text-[9px] text-zinc-500">Horas y minutos</p>
           </div>
 
           {/* Lista de Ejercicios */}
