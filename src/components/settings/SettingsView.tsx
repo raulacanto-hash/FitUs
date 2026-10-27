@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { Settings, Download, Upload, AlertTriangle, Moon, Sun, Palette, Check } from 'lucide-react';
 import { useTheme, ACCENT_PALETTES, AccentColor } from '../../context/ThemeContext';
+import { CloudAccountCard } from './CloudAccountCard';
 
 interface SettingsViewProps {
   onExportData: () => void;
@@ -34,6 +35,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <Settings className="w-5 h-5" style={{ color: accent.hex }} />
         Ajustes y Personalización
       </h2>
+
+      {/* SECCIÓN 0: CUENTA Y SINCRONIZACIÓN EN LA NUBE */}
+      <CloudAccountCard />
 
       {/* SECCIÓN 1: PERSONALIZACIÓN DE TEMA Y COLORES */}
       <div className={`rounded-2xl p-4 space-y-4 border ${
@@ -176,7 +180,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <h3 className="text-xs font-black uppercase tracking-wider">Zona de Peligro</h3>
           </div>
           <p className={`text-xs mb-3 ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
-            Elimina todo el historial, los entrenamientos registrados y las medidas en este navegador.
+            Elimina todo el historial, los entrenamientos registrados y las medidas. Si la
+            sincronización está activa, también se borrarán de la nube.
           </p>
           <button
             type="button"

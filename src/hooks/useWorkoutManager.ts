@@ -11,13 +11,7 @@ import { INITIAL_HISTORY } from '../data/initialHistory';
 import { PREDEFINED_ROUTINES } from '../data/predefinedRoutines';
 import { getLocalDateString } from '../utils/dates';
 import { getStoredItem, setStoredItem, clearAllStorage } from '../utils/storage';
-
-const STORAGE_KEYS = {
-  HISTORY: 'fittrack_history',
-  CUSTOM_EXERCISES: 'fittrack_custom_exercises',
-  CURRENT_WORKOUT: 'fittrack_current_workout',
-  ROUTINE_TEMPLATES: 'fittrack_routine_templates'
-};
+import { APP_STORAGE_KEYS } from '../utils/appData';
 
 export function createNewWorkoutSession(): WorkoutSession {
   return {
@@ -44,22 +38,22 @@ export function createNewWorkoutSession(): WorkoutSession {
 export function useWorkoutManager() {
   // Historial
   const [history, setHistory] = useState<WorkoutSession[]>(() => {
-    return getStoredItem<WorkoutSession[]>(STORAGE_KEYS.HISTORY, INITIAL_HISTORY);
+    return getStoredItem<WorkoutSession[]>(APP_STORAGE_KEYS.HISTORY, INITIAL_HISTORY);
   });
 
   // Ejercicios personalizados
   const [customExercises, setCustomExercises] = useState<ExerciseDefinition[]>(() => {
-    return getStoredItem<ExerciseDefinition[]>(STORAGE_KEYS.CUSTOM_EXERCISES, []);
+    return getStoredItem<ExerciseDefinition[]>(APP_STORAGE_KEYS.CUSTOM_EXERCISES, []);
   });
 
   // Plantillas de Rutinas (Predefinidas + creadas por el usuario)
   const [routineTemplates, setRoutineTemplates] = useState<RoutineTemplate[]>(() => {
-    return getStoredItem<RoutineTemplate[]>(STORAGE_KEYS.ROUTINE_TEMPLATES, PREDEFINED_ROUTINES);
+    return getStoredItem<RoutineTemplate[]>(APP_STORAGE_KEYS.ROUTINE_TEMPLATES, PREDEFINED_ROUTINES);
   });
 
   // Entrenamiento actual en curso
   const [currentWorkout, setCurrentWorkout] = useState<WorkoutSession>(() => {
-    return getStoredItem<WorkoutSession>(STORAGE_KEYS.CURRENT_WORKOUT, createNewWorkoutSession());
+    return getStoredItem<WorkoutSession>(APP_STORAGE_KEYS.CURRENT_WORKOUT, createNewWorkoutSession());
   });
 
   // Modal / Edición de histórico
@@ -67,19 +61,19 @@ export function useWorkoutManager() {
 
   // Sincronización con LocalStorage
   useEffect(() => {
-    setStoredItem(STORAGE_KEYS.HISTORY, history);
+    setStoredItem(APP_STORAGE_KEYS.HISTORY, history);
   }, [history]);
 
   useEffect(() => {
-    setStoredItem(STORAGE_KEYS.CUSTOM_EXERCISES, customExercises);
+    setStoredItem(APP_STORAGE_KEYS.CUSTOM_EXERCISES, customExercises);
   }, [customExercises]);
 
   useEffect(() => {
-    setStoredItem(STORAGE_KEYS.ROUTINE_TEMPLATES, routineTemplates);
+    setStoredItem(APP_STORAGE_KEYS.ROUTINE_TEMPLATES, routineTemplates);
   }, [routineTemplates]);
 
   useEffect(() => {
-    setStoredItem(STORAGE_KEYS.CURRENT_WORKOUT, currentWorkout);
+    setStoredItem(APP_STORAGE_KEYS.CURRENT_WORKOUT, currentWorkout);
   }, [currentWorkout]);
 
   // Lista consolidada de ejercicios
@@ -309,7 +303,8 @@ export function useWorkoutManager() {
       ...currentWorkout,
       id: `workout-${Date.now()}`,
       durationMinutes: duration,
-      date: currentWorkout.date || getLocalDateString()
+      date: currentWorkout.date || getLocalDateString(),
+      updatedAt: now
     };
 
     setHistory(prev => [finishedWorkout, ...prev]);
@@ -334,12 +329,16 @@ export function useWorkoutManager() {
 
   const handleSaveEditWorkout = useCallback(() => {
     if (!editingWorkout) return;
-    setHistory(prev => prev.map(w => w.id === editingWorkout.id ? editingWorkout : w));
+    const updatedWorkout: WorkoutSession = {
+      ...editingWorkout,
+      updatedAt: Date.now()
+    };
+    setHistory(prev => prev.map(w => w.id === updatedWorkout.id ? updatedWorkout : w));
     setEditingWorkout(null);
   }, [editingWorkout]);
 
   const handleDeleteWorkout = useCallback((workoutId: string) => {
-    if (window.confirm('¿Seguro que deseas eliminar este entrenamiento del historial?')) {
+    if (window.confirm('¿Seguro que deseas eliminar este entrenamiento? También se borrará de la nube si la sincronización está activa.')) {
       setHistory(prev => prev.filter(w => w.id !== workoutId));
     }
   }, []);
@@ -401,22 +400,25 @@ export function useWorkoutManager() {
   }, []);
 
   // Reinicio total
-  const handleResetAllData = useCallback(() => {
-    if (window.confirm('¿Deseas reiniciar completamente todos los datos de la app?')) {
-      clearAllStorage();
-      setHistory([]);
-      setCustomExercises([]);
-      setRoutineTemplates(PREDEFINED_ROUTINES);
-      const cleanSession: WorkoutSession = {
-        id: `w-${Date.now()}`,
-        routineName: 'Entrenamiento de Hoy',
-        date: getLocalDateString(),
-        startTime: undefined,
-        exercises: []
-      };
-      setCurrentWorkout(cleanSession);
-      alert('Datos eliminados por completo.');
+  const handleResetAllData = useCallback((): boolean => {
+    if (!window.confirm('¿Deseas borrar todos los datos? Si la sincronización está activa, también se eliminarán de la nube.')) {
+      return false;
     }
+
+    clearAllStorage();
+    setHistory([]);
+    setCustomExercises([]);
+    setRoutineTemplates(PREDEFINED_ROUTINES);
+    const cleanSession: WorkoutSession = {
+      id: `w-${Date.now()}`,
+      routineName: 'Entrenamiento de Hoy',
+      date: getLocalDateString(),
+      startTime: undefined,
+      exercises: []
+    };
+    setCurrentWorkout(cleanSession);
+    alert('Datos eliminados por completo.');
+    return true;
   }, []);
 
   return {

@@ -4,6 +4,8 @@ import { useRestTimer } from './hooks/useRestTimer';
 import { useWorkoutManager } from './hooks/useWorkoutManager';
 import { useBodyMetrics } from './hooks/useBodyMetrics';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
+import { CloudSyncProvider, useCloudSync } from './context/CloudSyncContext';
+import { CloudGate } from './components/cloud/CloudGate';
 import { Header } from './components/layout/Header';
 import { BottomNav } from './components/layout/BottomNav';
 import { RoutinesHub } from './components/routines/RoutinesHub';
@@ -18,7 +20,7 @@ import { SettingsView } from './components/settings/SettingsView';
 import { ExerciseSelectorModal } from './components/modals/ExerciseSelectorModal';
 import { CreateRoutineModal } from './components/modals/CreateRoutineModal';
 import { EditWorkoutModal } from './components/modals/EditWorkoutModal';
-import { Dumbbell, Sparkles } from 'lucide-react';
+import { Dumbbell, Sparkles, CloudOff } from 'lucide-react';
 
 const MainAppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('train');
@@ -33,8 +35,10 @@ const MainAppContent: React.FC = () => {
 
   const timer = useRestTimer();
   const manager = useWorkoutManager();
-  const { profile } = useBodyMetrics();
+  const body = useBodyMetrics();
+  const { profile } = body;
   const { isDark, accent } = useTheme();
+  const cloud = useCloudSync();
 
   // Al completar una serie, iniciar automáticamente el descanso configurado
   const handleToggleSetWithTimer = (exerciseId: string, setId: string) => {
@@ -63,6 +67,12 @@ const MainAppContent: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleResetAllData = () => {
+    if (manager.handleResetAllData()) {
+      body.resetBodyMetrics();
+    }
+  };
+
   const handleFinishWorkout = () => {
     const success = manager.handleFinishWorkout();
     if (success) {
@@ -82,7 +92,50 @@ const MainAppContent: React.FC = () => {
 
       {/* Contenedor Principal */}
       <main className="flex-1 max-w-lg w-full mx-auto px-4 pt-3">
-        
+        {cloud.configured && !cloud.user && (
+          <div className={`mb-3 p-2.5 rounded-2xl border flex items-center justify-between gap-2 ${
+            isDark
+              ? 'bg-amber-950/20 border-amber-500/25'
+              : 'bg-amber-50 border-amber-300'
+          }`}>
+            <div className="flex items-center gap-2 min-w-0">
+              <CloudOff className="w-4 h-4 text-amber-500 flex-shrink-0" />
+              <p className={`text-[10px] leading-snug ${isDark ? 'text-amber-200/80' : 'text-amber-800'}`}>
+                Modo local: tu historial solo está en este navegador.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveTab('settings')}
+              className="text-[10px] font-black px-2.5 py-1.5 rounded-xl bg-amber-500/15 text-amber-500 hover:bg-amber-500/25 transition-colors flex-shrink-0"
+            >
+              Activar respaldo
+            </button>
+          </div>
+        )}
+
+        {cloud.user && cloud.status === 'error' && (
+          <div className={`mb-3 p-2.5 rounded-2xl border flex items-center justify-between gap-2 ${
+            isDark
+              ? 'bg-red-950/20 border-red-500/25'
+              : 'bg-red-50 border-red-300'
+          }`}>
+            <div className="flex items-center gap-2 min-w-0">
+              <CloudOff className="w-4 h-4 text-red-500 flex-shrink-0" />
+              <p className={`text-[10px] leading-snug ${isDark ? 'text-red-200/80' : 'text-red-800'}`}>
+                No se pudo sincronizar. Tus cambios siguen guardados en este dispositivo.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveTab('settings')}
+              className="text-[10px] font-black px-2.5 py-1.5 rounded-xl bg-red-500/15 text-red-500 hover:bg-red-500/25 transition-colors flex-shrink-0"
+            >
+              Ver estado
+            </button>
+          </div>
+        )}
+
         {/* PESTAÑA 1: TRAIN (ENTRENAR) */}
         {activeTab === 'train' && (
           <div className="space-y-3">
@@ -227,7 +280,7 @@ const MainAppContent: React.FC = () => {
           <SettingsView
             onExportData={manager.handleExportData}
             onImportData={manager.handleImportData}
-            onResetAllData={manager.handleResetAllData}
+            onResetAllData={handleResetAllData}
           />
         )}
       </main>
@@ -284,7 +337,11 @@ const MainAppContent: React.FC = () => {
 export const App: React.FC = () => {
   return (
     <ThemeProvider>
-      <MainAppContent />
+      <CloudSyncProvider>
+        <CloudGate>
+          <MainAppContent />
+        </CloudGate>
+      </CloudSyncProvider>
     </ThemeProvider>
   );
 };

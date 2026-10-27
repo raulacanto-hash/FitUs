@@ -2,7 +2,7 @@ import { WeightLogEntry, BodyMeasurementEntry, UserProfile } from '../types/work
 import { getRelativeLocalDateString } from '../utils/dates';
 
 export const INITIAL_USER_PROFILE: UserProfile = {
-  name: 'Roma',
+  name: 'Raúl Canto',
   weeklyGoal: 3,
   targetWeight: 75.0
 };

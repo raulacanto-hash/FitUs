@@ -11,13 +11,8 @@ import {
   INITIAL_USER_PROFILE 
 } from '../data/initialBodyData';
 import { getStoredItem, setStoredItem } from '../utils/storage';
+import { APP_STORAGE_KEYS } from '../utils/appData';
 import { getLocalDateString } from '../utils/dates';
-
-const STORAGE_KEYS = {
-  WEIGHT_LOGS: 'fittrack_weight_logs',
-  BODY_MEASUREMENTS: 'fittrack_body_measurements',
-  USER_PROFILE: 'fittrack_user_profile'
-};
 
 export const MEASUREMENT_LABELS: Record<BodyMeasurementKey, string> = {
   waist: 'Cintura',
@@ -34,28 +29,28 @@ export const MEASUREMENT_LABELS: Record<BodyMeasurementKey, string> = {
 
 export function useBodyMetrics() {
   const [profile, setProfile] = useState<UserProfile>(() => {
-    return getStoredItem<UserProfile>(STORAGE_KEYS.USER_PROFILE, INITIAL_USER_PROFILE);
+    return getStoredItem<UserProfile>(APP_STORAGE_KEYS.USER_PROFILE, INITIAL_USER_PROFILE);
   });
 
   const [weightLogs, setWeightLogs] = useState<WeightLogEntry[]>(() => {
-    return getStoredItem<WeightLogEntry[]>(STORAGE_KEYS.WEIGHT_LOGS, INITIAL_WEIGHT_LOGS);
+    return getStoredItem<WeightLogEntry[]>(APP_STORAGE_KEYS.WEIGHT_LOGS, INITIAL_WEIGHT_LOGS);
   });
 
   const [measurements, setMeasurements] = useState<BodyMeasurementEntry[]>(() => {
-    return getStoredItem<BodyMeasurementEntry[]>(STORAGE_KEYS.BODY_MEASUREMENTS, INITIAL_BODY_MEASUREMENTS);
+    return getStoredItem<BodyMeasurementEntry[]>(APP_STORAGE_KEYS.BODY_MEASUREMENTS, INITIAL_BODY_MEASUREMENTS);
   });
 
   // Guardar en LocalStorage
   useEffect(() => {
-    setStoredItem(STORAGE_KEYS.USER_PROFILE, profile);
+    setStoredItem(APP_STORAGE_KEYS.USER_PROFILE, profile);
   }, [profile]);
 
   useEffect(() => {
-    setStoredItem(STORAGE_KEYS.WEIGHT_LOGS, weightLogs);
+    setStoredItem(APP_STORAGE_KEYS.WEIGHT_LOGS, weightLogs);
   }, [weightLogs]);
 
   useEffect(() => {
-    setStoredItem(STORAGE_KEYS.BODY_MEASUREMENTS, measurements);
+    setStoredItem(APP_STORAGE_KEYS.BODY_MEASUREMENTS, measurements);
   }, [measurements]);
 
   // Agregar registro de peso
@@ -90,6 +85,12 @@ export function useBodyMetrics() {
 
   const updateProfile = useCallback((updates: Partial<UserProfile>) => {
     setProfile(prev => ({ ...prev, ...updates }));
+  }, []);
+
+  const resetBodyMetrics = useCallback(() => {
+    setProfile(INITIAL_USER_PROFILE);
+    setWeightLogs([]);
+    setMeasurements([]);
   }, []);
 
   // Métricas calculadas de peso
@@ -135,6 +136,7 @@ export function useBodyMetrics() {
   return {
     profile,
     updateProfile,
+    resetBodyMetrics,
     weightLogs,
     addWeightEntry,
     deleteWeightEntry,

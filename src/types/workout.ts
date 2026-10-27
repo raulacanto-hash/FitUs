@@ -47,6 +47,7 @@ export interface WorkoutSession {
   durationMinutes?: number;
   exercises: WorkoutExercise[];
   routineId?: string; // vínculo a la plantilla si se originó de una rutina
+  updatedAt?: number; // epoch ms de la última modificación (para sincronización)
 }
 
 export interface MuscleRecoveryScore {
