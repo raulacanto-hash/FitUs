@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, Clock, Edit, Trash2, FileText } from 'lucide-react';
+import { Calendar, Clock, Edit, Trash2, FileText, CopyPlus } from 'lucide-react';
 import { WorkoutSession } from '../../types/workout';
 import { formatDisplayDate } from '../../utils/dates';
 import { formatDuration } from '../../utils/duration';
@@ -9,14 +9,17 @@ interface WorkoutHistoryCardProps {
   workout: WorkoutSession;
   onEdit: (workout: WorkoutSession) => void;
   onDelete: (workoutId: string) => void;
+  onConvertToRoutine: (workout: WorkoutSession) => void;
 }
 
 export const WorkoutHistoryCard: React.FC<WorkoutHistoryCardProps> = ({
   workout,
   onEdit,
-  onDelete
+  onDelete,
+  onConvertToRoutine
 }) => {
   const { accent, isDark } = useTheme();
+  const canConvertToRoutine = Boolean(workout.exercises && workout.exercises.length > 0);
 
   return (
     <div className={`p-4 rounded-3xl border space-y-3 transition-all ${
@@ -99,6 +102,19 @@ export const WorkoutHistoryCard: React.FC<WorkoutHistoryCardProps> = ({
           </div>
         ))}
       </div>
+
+      <button
+        type="button"
+        onClick={() => onConvertToRoutine(workout)}
+        disabled={!canConvertToRoutine}
+        className={`w-full pt-2.5 border-t text-[10px] font-bold flex items-center justify-center gap-1.5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
+          isDark ? 'hover:text-lime-300' : 'hover:text-lime-600'
+        }`}
+        style={{ borderColor: isDark ? '#27272a' : '#e4e4e7', color: accent.hex }}
+        title={canConvertToRoutine ? 'Convertir en rutina' : 'Añade ejercicios para convertirla en rutina'}
+      >
+        <CopyPlus className="w-3.5 h-3.5" /> Convertir en rutina
+      </button>
     </div>
   );
 };

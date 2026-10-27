@@ -9,6 +9,7 @@ interface HistoryViewProps {
   history: WorkoutSession[];
   onEditWorkout: (workout: WorkoutSession) => void;
   onDeleteWorkout: (workoutId: string) => void;
+  onConvertWorkoutToRoutine: (workout: WorkoutSession) => void;
   onAddPastWorkout: () => void;
 }
 
@@ -16,6 +17,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
   history,
   onEditWorkout,
   onDeleteWorkout,
+  onConvertWorkoutToRoutine,
   onAddPastWorkout
 }) => {
   const { accent, isDark } = useTheme();
@@ -65,6 +67,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
             workout={workout}
             onEdit={onEditWorkout}
             onDelete={onDeleteWorkout}
+            onConvertToRoutine={onConvertWorkoutToRoutine}
           />
         ))
       )}

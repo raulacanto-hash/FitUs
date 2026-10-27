@@ -162,20 +162,37 @@ export function useWorkoutManager() {
     alert(`¡Rutina "${newTemplate.name}" guardada con éxito en tus plantillas!`);
   }, [currentWorkout]);
 
-  // Crear rutina desde cero
-  const handleCreateRoutineTemplate = useCallback((template: Omit<RoutineTemplate, 'id'>) => {
-    const newTemplate: RoutineTemplate = {
-      ...template,
-      id: `custom-routine-${Date.now()}`,
-      isCustom: true
-    };
-    setRoutineTemplates(prev => [newTemplate, ...prev]);
-  }, []);
+  // Crear una rutina desde cero o actualizar una existente
+  const handleCreateRoutineTemplate = useCallback(
+    (template: Omit<RoutineTemplate, 'id'> & { id?: string }) => {
+      if (template.id) {
+        const routineId = template.id;
+        setRoutineTemplates((prev) =>
+          prev.map((routine) =>
+            routine.id === routineId
+              ? { ...routine, ...template, id: routineId, isCustom: true }
+              : routine
+          )
+        );
+        return;
+      }
 
-  const handleDeleteRoutineTemplate = useCallback((id: string) => {
-    if (window.confirm('¿Seguro que deseas eliminar esta rutina?')) {
-      setRoutineTemplates(prev => prev.filter(r => r.id !== id));
+      const newTemplate: RoutineTemplate = {
+        ...template,
+        id: `custom-routine-${Date.now()}`,
+        isCustom: true
+      };
+      setRoutineTemplates((prev) => [newTemplate, ...prev]);
+    },
+    []
+  );
+
+  const handleDeleteRoutineTemplate = useCallback((id: string): boolean => {
+    if (!window.confirm('¿Seguro que deseas eliminar esta rutina?')) {
+      return false;
     }
+    setRoutineTemplates((prev) => prev.filter((routine) => routine.id !== id));
+    return true;
   }, []);
 
   // Manejo de Series

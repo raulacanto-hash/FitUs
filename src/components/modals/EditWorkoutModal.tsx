@@ -207,6 +207,12 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
 
                 {/* Series */}
                 <div className="space-y-1">
+                  <div className="flex items-center gap-2 px-1 text-[9px] uppercase tracking-wider text-zinc-500">
+                    <span className="w-5">#</span>
+                    <span className="w-16 text-center">Peso (kg)</span>
+                    <span className="w-4" />
+                    <span className="w-16 text-center">Reps</span>
+                  </div>
                   {ex.sets.map((s, sIdx) => (
                     <div key={s.id || sIdx} className="flex items-center gap-2 text-xs">
                       <span className="text-zinc-400 font-mono text-[10px] w-5">#{sIdx + 1}</span>
@@ -220,6 +226,7 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
                           isDark ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-white border-zinc-300 text-zinc-900'
                         }`}
                         placeholder="0"
+                        aria-label="Peso (kg)"
                       />
                       <span className="text-zinc-400 text-[10px]">kg ×</span>
                       <input
@@ -231,6 +238,7 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
                           isDark ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-white border-zinc-300 text-zinc-900'
                         }`}
                         placeholder="0"
+                        aria-label="Reps"
                       />
                       <button
                         type="button"

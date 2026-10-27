@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, MoreVertical, Plus, Play, Dumbbell, ShieldCheck, Activity } from 'lucide-react';
+import { ArrowLeft, Plus, Play, Dumbbell, ShieldCheck, Activity, Pencil, Trash2, MoreVertical } from 'lucide-react';
 import { RoutineTemplate } from '../../types/workout';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -8,13 +8,17 @@ interface RoutineDetailViewProps {
   onBack: () => void;
   onStartRoutine: (routine: RoutineTemplate) => void;
   onAddExerciseClick: () => void;
+  onEditRoutine: (routine: RoutineTemplate) => void;
+  onDeleteRoutine: (id: string) => void;
 }
 
 export const RoutineDetailView: React.FC<RoutineDetailViewProps> = ({
   routine,
   onBack,
   onStartRoutine,
-  onAddExerciseClick
+  onAddExerciseClick,
+  onEditRoutine,
+  onDeleteRoutine
 }) => {
   const { accent, isDark } = useTheme();
 
@@ -30,16 +34,32 @@ export const RoutineDetailView: React.FC<RoutineDetailViewProps> = ({
           <ArrowLeft className="w-5 h-5" style={{ color: accent.hex }} />
         </button>
 
-        <h1 className="text-base font-black tracking-tight text-center truncate max-w-[220px]">
+        <h1 className="text-base font-black tracking-tight text-center truncate max-w-[210px]">
           {routine.name}
         </h1>
 
-        <button
-          type="button"
-          className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-zinc-800 text-zinc-400' : 'hover:bg-zinc-200 text-zinc-600'}`}
-        >
-          <MoreVertical className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <button
+            type="button"
+            onClick={() => onEditRoutine(routine)}
+            className={`p-2 rounded-xl transition-colors ${
+              isDark ? 'hover:bg-zinc-800 text-zinc-400' : 'hover:bg-zinc-200 text-zinc-600'
+            }`}
+            title="Editar rutina"
+          >
+            <Pencil className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onDeleteRoutine(routine.id)}
+            className={`p-2 rounded-xl transition-colors ${
+              isDark ? 'hover:bg-zinc-800 text-zinc-400 hover:text-red-400' : 'hover:bg-zinc-200 text-zinc-600 hover:text-red-600'
+            }`}
+            title="Eliminar rutina"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Músculos a entrenar (Screenshot 1) */}

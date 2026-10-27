@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActiveTab, RoutineTemplate, WorkoutExercise } from './types/workout';
+import { ActiveTab, RoutineTemplate, WorkoutExercise, WorkoutSession } from './types/workout';
 import { useRestTimer } from './hooks/useRestTimer';
 import { useWorkoutManager } from './hooks/useWorkoutManager';
 import { useBodyMetrics } from './hooks/useBodyMetrics';
 import { useWorkoutSettings } from './hooks/useWorkoutSettings';
 import { INITIAL_USER_PROFILE } from './data/initialBodyData';
 import { exportToExcel, exportWorkoutsCsv, parseImportFile } from './utils/spreadsheet';
+import { buildRoutineFromWorkout } from './utils/routineFromWorkout';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { CloudSyncProvider, useCloudSync } from './context/CloudSyncContext';
 import { CloudGate } from './components/cloud/CloudGate';
@@ -38,6 +39,7 @@ const MainAppContent: React.FC = () => {
 
   const [isExerciseModalOpen, setIsExerciseModalOpen] = useState(false);
   const [isCreateRoutineModalOpen, setIsCreateRoutineModalOpen] = useState(false);
+  const [routineToEdit, setRoutineToEdit] = useState<RoutineTemplate | null>(null);
 
   const timer = useRestTimer();
   const manager = useWorkoutManager();
@@ -81,6 +83,46 @@ const MainAppContent: React.FC = () => {
     setSelectedRoutineForDetail(routine);
     setTrainViewMode('detail');
   };
+
+  const handleOpenCreateRoutine = () => {
+    setRoutineToEdit(null);
+    setIsCreateRoutineModalOpen(true);
+  };
+
+  const handleOpenEditRoutine = (routine: RoutineTemplate) => {
+    setRoutineToEdit(routine);
+    setIsCreateRoutineModalOpen(true);
+  };
+
+  const handleDeleteRoutine = (id: string) => {
+    if (!manager.handleDeleteRoutineTemplate(id)) return;
+
+    if (workoutSettings.settings.activeRoutineId === id) {
+      const nextRoutine = manager.routineTemplates.find((routine) => routine.id !== id);
+      workoutSettings.updateSettings({ activeRoutineId: nextRoutine?.id });
+    }
+    if (selectedRoutineForDetail?.id === id) {
+      setSelectedRoutineForDetail(null);
+      setTrainViewMode('routines');
+    }
+  };
+
+  const handleConvertWorkoutToRoutine = (workout: WorkoutSession) => {
+    const template = buildRoutineFromWorkout(workout);
+    if (!template) {
+      alert('Este entrenamiento no tiene ejercicios para convertir en rutina.');
+      return;
+    }
+
+    manager.handleCreateRoutineTemplate(template);
+    alert(
+      `Rutina "${template.name}" creada desde el historial. Ya está disponible en la Biblioteca.`
+    );
+  };
+
+  const activeRoutineDetail = selectedRoutineForDetail
+    ? manager.routineTemplates.find((routine) => routine.id === selectedRoutineForDetail.id) ?? null
+    : null;
 
   const handleStartFreeWorkout = () => {
     if (!manager.currentWorkout.startTime && manager.currentWorkout.exercises.length === 0) {
@@ -322,20 +364,22 @@ const MainAppContent: React.FC = () => {
                 onStartRoutine={handleStartRoutine}
                 onViewRoutineDetails={handleViewRoutineDetails}
                 onStartFreeWorkout={handleStartFreeWorkout}
-                onOpenCreateRoutine={() => setIsCreateRoutineModalOpen(true)}
-                onDeleteRoutine={manager.handleDeleteRoutineTemplate}
+                onOpenCreateRoutine={handleOpenCreateRoutine}
+                onDeleteRoutine={handleDeleteRoutine}
                 onOpenProfile={() => setIsProfileModalOpen(true)}
                 onOpenWorkoutSettings={() => setTrainViewMode('workoutSettings')}
               />
             )}
 
             {/* Vista 1B: Detalle de Rutina (Screenshot 1) */}
-            {trainViewMode === 'detail' && selectedRoutineForDetail && (
+            {trainViewMode === 'detail' && activeRoutineDetail && (
               <RoutineDetailView
-                routine={selectedRoutineForDetail}
+                routine={activeRoutineDetail}
                 onBack={() => setTrainViewMode('routines')}
                 onStartRoutine={handleStartRoutine}
-                onAddExerciseClick={() => setIsExerciseModalOpen(true)}
+                onAddExerciseClick={() => handleOpenEditRoutine(activeRoutineDetail)}
+                onEditRoutine={handleOpenEditRoutine}
+                onDeleteRoutine={handleDeleteRoutine}
               />
             )}
 
@@ -383,7 +427,9 @@ const MainAppContent: React.FC = () => {
               setActiveTab('train');
               setTrainViewMode('detail');
             }}
-            onOpenCreateRoutine={() => setIsCreateRoutineModalOpen(true)}
+            onOpenCreateRoutine={handleOpenCreateRoutine}
+            onEditRoutine={handleOpenEditRoutine}
+            onDeleteRoutine={handleDeleteRoutine}
             onOpenExerciseModal={() => setIsExerciseModalOpen(true)}
           />
         )}
@@ -404,6 +450,7 @@ const MainAppContent: React.FC = () => {
             history={manager.history}
             onEditWorkout={manager.handleStartEditWorkout}
             onDeleteWorkout={manager.handleDeleteWorkout}
+            onConvertWorkoutToRoutine={handleConvertWorkoutToRoutine}
             onAddPastWorkout={manager.handleStartNewPastWorkout}
           />
         )}
@@ -433,8 +480,12 @@ const MainAppContent: React.FC = () => {
       {/* Modal para Diseñar Nueva Plantilla de Rutina */}
       <CreateRoutineModal
         isOpen={isCreateRoutineModalOpen}
-        onClose={() => setIsCreateRoutineModalOpen(false)}
+        onClose={() => {
+          setIsCreateRoutineModalOpen(false);
+          setRoutineToEdit(null);
+        }}
         exerciseList={manager.fullExerciseList}
+        initialRoutine={routineToEdit}
         onSaveRoutine={manager.handleCreateRoutineTemplate}
       />
 

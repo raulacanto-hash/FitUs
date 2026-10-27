@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Sparkles, Plus, MoreVertical, LayoutGrid, Dumbbell } from 'lucide-react';
+import { Search, Sparkles, Plus, LayoutGrid, Dumbbell, Pencil, Trash2, MoreVertical } from 'lucide-react';
 import { RoutineTemplate, ExerciseDefinition } from '../../types/workout';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -8,6 +8,8 @@ interface LibraryViewProps {
   exerciseList: ExerciseDefinition[];
   onSelectRoutine: (routine: RoutineTemplate) => void;
   onOpenCreateRoutine: () => void;
+  onEditRoutine: (routine: RoutineTemplate) => void;
+  onDeleteRoutine: (id: string) => void;
   onOpenExerciseModal: () => void;
 }
 
@@ -16,6 +18,8 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
   exerciseList,
   onSelectRoutine,
   onOpenCreateRoutine,
+  onEditRoutine,
+  onDeleteRoutine,
   onOpenExerciseModal
 }) => {
   const { accent, isDark } = useTheme();
@@ -158,16 +162,34 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelectRoutine(routine);
-                }}
-                className={`p-1.5 rounded-lg ${isDark ? 'text-zinc-500 hover:text-white' : 'text-zinc-400 hover:text-zinc-900'}`}
-              >
-                <MoreVertical className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onEditRoutine(routine);
+                  }}
+                  className={`p-1.5 rounded-lg transition-colors ${
+                    isDark ? 'text-zinc-500 hover:text-white hover:bg-zinc-800' : 'text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100'
+                  }`}
+                  title="Editar rutina"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onDeleteRoutine(routine.id);
+                  }}
+                  className={`p-1.5 rounded-lg transition-colors ${
+                    isDark ? 'text-zinc-500 hover:text-red-400 hover:bg-zinc-800' : 'text-zinc-400 hover:text-red-600 hover:bg-zinc-100'
+                  }`}
+                  title="Eliminar rutina"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           ))}
         </div>

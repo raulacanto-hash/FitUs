@@ -1,6 +1,0 @@
-2026/10/27-13:51:00.065 64a4 Creating DB C:\Users\raul.acanto\Documents\FitUS\FitUs\.chrome-spreadsheet2\Default\IndexedDB\http_localhost_4173.indexeddb.leveldb since it was missing.
-2026/10/27-13:51:00.074 64a4 Reusing MANIFEST C:\Users\raul.acanto\Documents\FitUS\FitUs\.chrome-spreadsheet2\Default\IndexedDB\http_localhost_4173.indexeddb.leveldb/MANIFEST-000001
-2026/10/27-13:51:00.085 32c4 Level-0 table #5: started
-2026/10/27-13:51:00.087 32c4 Level-0 table #5: 1264 bytes OK
-2026/10/27-13:51:00.092 32c4 Delete type=0 #3
-2026/10/27-13:51:00.094 32c4 Manual compaction at level-0 from '\x00\x01\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x02\x00\x00\x00' @ 0 : 0; will stop at (end)

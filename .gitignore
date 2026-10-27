@@ -18,6 +18,12 @@ firebase-debug.log
 firestore-debug.log
 ui-debug.log
 
+# Temporary local tooling
+.npm-cache/
+.chrome-*/
+.tmp-build*/
+downloads-test/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
