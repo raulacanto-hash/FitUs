@@ -1,8 +1,10 @@
 import { getApp, getApps, initializeApp, type FirebaseApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, type Auth } from 'firebase/auth';
 import {
-  enableMultiTabIndexedDbPersistence,
   getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
   type Firestore
 } from 'firebase/firestore';
 
@@ -29,16 +31,16 @@ let db: Firestore | null = null;
 if (isFirebaseConfigured) {
   app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
   auth = getAuth(app);
-  db = getFirestore(app);
 
-  // Caché offline: conserva los datos y las escrituras pendientes en IndexedDB
-  void enableMultiTabIndexedDbPersistence(db).catch((persistenceError) => {
-    const code =
-      typeof persistenceError === 'object' && persistenceError !== null && 'code' in persistenceError
-        ? String((persistenceError as { code: unknown }).code)
-        : '';
-    console.warn('No se pudo activar la caché offline de Firestore:', code || persistenceError);
-  });
+  try {
+    // Caché offline persistente y compartida entre pestañas
+    db = initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+    });
+  } catch {
+    // En recargas de HMR Firestore ya puede estar inicializado
+    db = getFirestore(app);
+  }
 }
 
 export const googleProvider = new GoogleAuthProvider();

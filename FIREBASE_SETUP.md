@@ -1,5 +1,15 @@
 # Poner FitTrack en línea con Firebase
 
+## Estado de este proyecto
+
+- **Proyecto:** `fitus-ccbd7`
+- **URL publicada:** https://fitus-ccbd7.web.app
+- **Firestore:** base de datos creada y reglas desplegadas.
+- **Autenticación:** proveedor de Google habilitado.
+- **Hosting:** desplegado.
+
+La app ya está en línea. Esta guía queda como referencia para volver a desplegar o configurar otro proyecto.
+
 Esta guía deja la app publicada en una URL `https://TU-PROYECTO.web.app` y sincroniza automáticamente el historial, las rutinas, las medidas y el perfil con Firestore.
 
 La app usa:
@@ -129,6 +139,23 @@ Esto evita el límite de 1 MiB por documento de Firestore y permite crecer duran
 - **Cerrar sesión:** los datos permanecen en Firestore. Al volver a entrar con la misma cuenta se recuperan.
 - **Borrar todo:** la opción de Ajustes borra los datos locales y, con la sincronización activa, también los de la nube. Úsala solo si estás seguro.
 - **Respaldo adicional:** la exportación/importación JSON de Ajustes sigue funcionando.
+
+## Migrar tu historial actual
+
+El historial de `localStorage` pertenece al dominio donde lo creaste, así que la URL nueva empieza vacía. Tienes dos formas de moverlo:
+
+### Opción A: subirlo desde la versión local (recomendada)
+
+1. Ejecuta `npm run dev` en `FitUs`.
+2. Abre `http://localhost:3000` (asegúrate de que sea el puerto 3000, no 3001).
+3. Inicia sesión con Google. La app sube tu historial, rutinas y medidas locales a Firestore.
+4. Abre https://fitus-ccbd7.web.app con la misma cuenta: los datos aparecerán allí.
+
+### Opción B: exportar e importar
+
+1. En la versión antigua, ve a **Ajustes → Exportar Copia** y guarda el JSON.
+2. En la versión nueva, inicia sesión y ve a **Ajustes → Importar Copia**.
+3. Selecciona el JSON. Se reemplazan los entrenamientos y rutinas actuales y se sincronizan con la nube.
 
 ## Problemas frecuentes
 
