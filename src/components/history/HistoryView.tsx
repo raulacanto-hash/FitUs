@@ -1,9 +1,11 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { History, Calendar, Plus } from 'lucide-react';
 import { WorkoutSession } from '../../types/workout';
 import { WorkoutHistoryCard } from './WorkoutHistoryCard';
 import { sortWorkoutsByDateDesc } from '../../utils/workoutStats';
 import { useTheme } from '../../context/ThemeContext';
+import { WorkoutCalendar } from './WorkoutCalendar';
+import { getLocalDateString } from '../../utils/dates';
 
 interface HistoryViewProps {
   history: WorkoutSession[];
@@ -22,6 +24,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
 }) => {
   const { accent, isDark } = useTheme();
   const orderedHistory = useMemo(() => sortWorkoutsByDateDesc(history), [history]);
+  const [selectedDate, setSelectedDate] = useState(getLocalDateString());
 
   return (
     <div className={`space-y-4 animate-in fade-in duration-200 ${isDark ? 'text-zinc-100' : 'text-zinc-900'}`}>
@@ -49,7 +52,13 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
         <Plus className="w-4 h-4" style={{ color: accent.hex }} />
         Registrar entrenamiento anterior
       </button>
-
+       <div className="pt-2 pb-1">
+        <WorkoutCalendar 
+          history={history} 
+          selectedDate={selectedDate} 
+          onSelectDate={setSelectedDate} 
+        />
+      </div>
       {orderedHistory.length === 0 ? (
         <div className={`text-center py-14 px-4 border border-dashed rounded-3xl ${
           isDark ? 'border-zinc-800/80 bg-zinc-900/30' : 'border-zinc-300 bg-white'

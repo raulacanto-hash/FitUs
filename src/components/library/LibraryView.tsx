@@ -143,7 +143,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
 
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-2">
-                    <h3 className="text-xs font-bold text-white group-hover:text-lime-300 transition-colors">
+                    <h3 className="text-xs font-bold text-black group-hover:text-red-300 transition-colors">
                       {routine.name}
                     </h3>
                     {routine.isActiveRoutine && (
