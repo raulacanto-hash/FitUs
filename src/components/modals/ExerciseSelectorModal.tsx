@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Dumbbell, X, Search, Sparkles, ChevronLeft, Plus } from 'lucide-react';
+import { Dumbbell, X, Search, Sparkles, ChevronLeft, Plus, ArrowLeftRight } from 'lucide-react';
 import { ExerciseDefinition, MuscleFilter, MuscleCategory } from '../../types/workout';
 import { MUSCLE_GROUPS } from '../../data/exerciseDatabase';
 import { useTheme } from '../../context/ThemeContext';
@@ -9,7 +9,8 @@ interface ExerciseSelectorModalProps {
   onClose: () => void;
   exerciseList: ExerciseDefinition[];
   onSelectExercise: (exercise: ExerciseDefinition) => void;
-  onCreateCustomExercise: (name: string, category: MuscleCategory) => void;
+  onCreateCustomExercise: (name: string, category: MuscleCategory) => ExerciseDefinition;
+  isReplaceMode?: boolean;
 }
 
 export const ExerciseSelectorModal: React.FC<ExerciseSelectorModalProps> = ({
@@ -17,7 +18,8 @@ export const ExerciseSelectorModal: React.FC<ExerciseSelectorModalProps> = ({
   onClose,
   exerciseList,
   onSelectExercise,
-  onCreateCustomExercise
+  onCreateCustomExercise,
+  isReplaceMode = false
 }) => {
   const { accent, isDark } = useTheme();
   const [searchTerm, setSearchTerm] = useState('');
@@ -39,9 +41,12 @@ export const ExerciseSelectorModal: React.FC<ExerciseSelectorModalProps> = ({
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCustomName.trim()) return;
-    onCreateCustomExercise(newCustomName.trim(), newCustomCategory);
+    const created = onCreateCustomExercise(newCustomName.trim(), newCustomCategory);
     setNewCustomName('');
     setIsCreatingCustom(false);
+    if (created) {
+      onSelectExercise(created);
+    }
     onClose();
   };
 
@@ -54,8 +59,12 @@ export const ExerciseSelectorModal: React.FC<ExerciseSelectorModalProps> = ({
         {/* Header del Modal */}
         <div className={`p-4 border-b flex justify-between items-center ${isDark ? 'border-zinc-800' : 'border-zinc-200'}`}>
           <h3 className="font-bold text-sm flex items-center gap-2">
-            <Dumbbell className="w-4 h-4" style={{ color: accent.hex }} />
-            Catálogo de Ejercicios
+            {isReplaceMode ? (
+              <ArrowLeftRight className="w-4 h-4" style={{ color: accent.hex }} />
+            ) : (
+              <Dumbbell className="w-4 h-4" style={{ color: accent.hex }} />
+            )}
+            {isReplaceMode ? 'Cambiar ejercicio' : 'Catálogo de Ejercicios'}
           </h3>
           <button 
             type="button"
@@ -142,7 +151,11 @@ export const ExerciseSelectorModal: React.FC<ExerciseSelectorModalProps> = ({
                         </span>
                       </div>
                     </div>
-                    <Plus className="w-4 h-4 text-zinc-400 group-hover:text-white" />
+                    {isReplaceMode ? (
+                      <ArrowLeftRight className="w-4 h-4 text-zinc-400 group-hover:text-white" />
+                    ) : (
+                      <Plus className="w-4 h-4 text-zinc-400 group-hover:text-white" />
+                    )}
                   </button>
                 ))
               )}
@@ -158,7 +171,8 @@ export const ExerciseSelectorModal: React.FC<ExerciseSelectorModalProps> = ({
                   : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-800 border-zinc-300'
               }`}
             >
-              <Sparkles className="w-3.5 h-3.5" style={{ color: accent.hex }} /> Crear Ejercicio Personalizado
+              <Sparkles className="w-3.5 h-3.5" style={{ color: accent.hex }} />
+              {isReplaceMode ? 'Crear y usar ejercicio personalizado' : 'Crear Ejercicio Personalizado'}
             </button>
           </div>
         ) : (

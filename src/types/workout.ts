@@ -126,6 +126,12 @@ export interface UserProfile {
   targetWeight?: number; // kg objetivo
 }
 
+/**
+ * Escala de letra configurable para la pantalla de captura de series.
+ * Se aplica a los campos de carga/reps y al temporizador de descanso.
+ */
+export type FontScaleOption = 'compact' | 'normal' | 'large' | 'xlarge';
+
 // Preferencias del entrenamiento (pantalla "Ajustes del entrenamiento")
 export interface WorkoutSettings {
   activeRoutineId?: string;
@@ -150,6 +156,8 @@ export interface WorkoutSettings {
   warmupSets: boolean;
   restTimer: boolean;
   plateCalculator: boolean;
+  inputFontScale: FontScaleOption;
+  restTimerFontScale: FontScaleOption;
   updatedAt: number;
 }
 

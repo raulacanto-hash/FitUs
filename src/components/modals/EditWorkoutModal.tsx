@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Trash2, Plus, Dumbbell } from 'lucide-react';
+import { X, Trash2, Plus, Dumbbell, ArrowLeftRight } from 'lucide-react';
 import { WorkoutSession } from '../../types/workout';
 import { formatDuration, splitDuration, durationFromParts } from '../../utils/duration';
 import { useTheme } from '../../context/ThemeContext';
@@ -11,6 +11,7 @@ interface EditWorkoutModalProps {
   onSave: () => void;
   onUpdateWorkout: (updater: (prev: WorkoutSession) => WorkoutSession) => void;
   onOpenAddExercise: () => void;
+  onReplaceExercise: (exerciseId: string) => void;
 }
 
 export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
@@ -19,7 +20,8 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
   onClose,
   onSave,
   onUpdateWorkout,
-  onOpenAddExercise
+  onOpenAddExercise,
+  onReplaceExercise
 }) => {
   const { accent, isDark } = useTheme();
 
@@ -195,14 +197,24 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
               }`}>
                 <div className="flex justify-between items-center">
                   <span className="font-bold text-xs">{ex.name}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveExercise(ex.id)}
-                    className="text-zinc-400 hover:text-red-500 p-1"
-                    title="Eliminar ejercicio"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="flex items-center gap-0.5">
+                    <button
+                      type="button"
+                      onClick={() => onReplaceExercise(ex.id)}
+                      className="text-zinc-400 hover:text-lime-400 p-1"
+                      title="Cambiar ejercicio"
+                    >
+                      <ArrowLeftRight className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveExercise(ex.id)}
+                      className="text-zinc-400 hover:text-red-500 p-1"
+                      title="Eliminar ejercicio"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Series */}

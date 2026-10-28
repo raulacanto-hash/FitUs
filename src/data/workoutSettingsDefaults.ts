@@ -1,4 +1,4 @@
-import { WorkoutSettings } from '../types/workout';
+import { FontScaleOption, WorkoutSettings } from '../types/workout';
 
 export const GOAL_OPTIONS = [
   'Crecer y tonificar músculo',
@@ -19,6 +19,33 @@ export const SET_RANGE_OPTIONS = ['2, 3', '3', '3, 4', '4', '4, 5'];
 export const REP_RANGE_OPTIONS = ['6-8', '8-10', '8-12', '10-15', '12-20'];
 
 export const DELOAD_OPTIONS = ['Ninguno', 'Cada 4 semanas', 'Cada 6 semanas', 'Cada 8 semanas'];
+
+// Escalas disponibles para la letra de carga/repeticiones y del temporizador
+export const FONT_SCALE_OPTIONS: { label: string; value: FontScaleOption }[] = [
+  { label: 'Compacto', value: 'compact' },
+  { label: 'Normal', value: 'normal' },
+  { label: 'Grande', value: 'large' },
+  { label: 'Extra grande', value: 'xlarge' }
+];
+
+export const FONT_SCALE_LABELS: Record<FontScaleOption, string> = {
+  compact: 'Compacto',
+  normal: 'Normal',
+  large: 'Grande',
+  xlarge: 'Extra grande'
+};
+
+export const FONT_SCALE_FACTORS: Record<FontScaleOption, number> = {
+  compact: 0.85,
+  normal: 1,
+  large: 1.3,
+  xlarge: 1.6
+};
+
+export function getFontScaleFactor(option: FontScaleOption | undefined): number {
+  return FONT_SCALE_FACTORS[option ?? 'normal'] ?? 1;
+}
+
 
 export const WORKOUT_SETTINGS_DEFAULTS: WorkoutSettings = {
   activeRoutineId: undefined,
@@ -43,5 +70,7 @@ export const WORKOUT_SETTINGS_DEFAULTS: WorkoutSettings = {
   warmupSets: true,
   restTimer: true,
   plateCalculator: true,
+  inputFontScale: 'normal',
+  restTimerFontScale: 'normal',
   updatedAt: 0
 };

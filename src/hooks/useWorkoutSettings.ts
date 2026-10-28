@@ -6,10 +6,13 @@ import { getStoredItem, setStoredItem } from '../utils/storage';
 
 export function useWorkoutSettings() {
   const [settings, setSettings] = useState<WorkoutSettings>(() => {
-    return getStoredItem<WorkoutSettings>(
+    const stored = getStoredItem<Partial<WorkoutSettings>>(
       APP_STORAGE_KEYS.WORKOUT_SETTINGS,
-      WORKOUT_SETTINGS_DEFAULTS
+      {}
     );
+    // Mezclamos con los valores por defecto para que los ajustes nuevos
+    // (escala de letra, etc.) existan aunque la copia guardada sea anterior.
+    return { ...WORKOUT_SETTINGS_DEFAULTS, ...stored };
   });
 
   useEffect(() => {

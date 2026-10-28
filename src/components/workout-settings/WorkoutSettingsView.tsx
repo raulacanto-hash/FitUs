@@ -5,6 +5,7 @@ import {
   Ban,
   Bandage,
   BarChart2,
+  Bell,
   CalendarCheck,
   CalendarDays,
   Calculator,
@@ -25,9 +26,11 @@ import {
   Timer,
   TrendingDown,
   TrendingUp,
+  Type,
   X
 } from 'lucide-react';
 import {
+  FontScaleOption,
   MuscleCategory,
   RoutineTemplate,
   UserProfile,
@@ -37,11 +40,14 @@ import {
   DELOAD_OPTIONS,
   DURATION_OPTIONS,
   EXPERIENCE_OPTIONS,
+  FONT_SCALE_LABELS,
+  FONT_SCALE_OPTIONS,
   GOAL_OPTIONS,
   REP_RANGE_OPTIONS,
   SET_RANGE_OPTIONS,
   VARIETY_OPTIONS
 } from '../../data/workoutSettingsDefaults';
+import { playRestTimerBeep } from '../../utils/audio';
 import { useTheme } from '../../context/ThemeContext';
 import { formatDuration } from '../../utils/duration';
 
@@ -365,6 +371,22 @@ export const WorkoutSettingsView: React.FC<WorkoutSettingsViewProps> = ({
   const muscleValue = (muscles: MuscleCategory[]) =>
     muscles.length === 0 ? 'Ninguno' : `${muscles.length} seleccionados`;
 
+  const openFontScalePicker = (
+    title: string,
+    value: FontScaleOption,
+    onSelect: (value: FontScaleOption) => void
+  ) => {
+    setPicker({
+      title,
+      options: FONT_SCALE_OPTIONS.map((option) => ({
+        label: option.label,
+        value: option.value
+      })),
+      selected: value,
+      onSelect: (selected) => onSelect(selected as FontScaleOption)
+    });
+  };
+
   return (
     <div className={`space-y-4 animate-in fade-in duration-200 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] ${isDark ? 'text-zinc-100' : 'text-zinc-900'}`}>
       <div className="flex items-center gap-2 pt-1">
@@ -662,6 +684,54 @@ export const WorkoutSettingsView: React.FC<WorkoutSettingsViewProps> = ({
         </section>
       )}
 
+      {sectionVisible([
+        'Tamaño de letra de carga y reps',
+        'Tamaño del temporizador de descanso',
+        'Probar campana de descanso'
+      ]) && (
+        <section className="space-y-2">
+          <h3 className={sectionTitleClass}>Pantalla de ejercicio</h3>
+          <div className={`rounded-3xl border overflow-hidden divide-y ${cardClass}`}>
+            {matches('Tamaño de letra de carga y reps') && (
+              <SettingsRow
+                icon={Type}
+                label="Tamaño de letra de carga y reps"
+                value={FONT_SCALE_LABELS[settings.inputFontScale]}
+                onClick={() =>
+                  openFontScalePicker(
+                    'Tamaño de letra de carga y reps',
+                    settings.inputFontScale,
+                    (value) => onUpdateSettings({ inputFontScale: value })
+                  )
+                }
+              />
+            )}
+            {matches('Tamaño del temporizador de descanso') && (
+              <SettingsRow
+                icon={Timer}
+                label="Tamaño del temporizador de descanso"
+                value={FONT_SCALE_LABELS[settings.restTimerFontScale]}
+                onClick={() =>
+                  openFontScalePicker(
+                    'Tamaño del temporizador de descanso',
+                    settings.restTimerFontScale,
+                    (value) => onUpdateSettings({ restTimerFontScale: value })
+                  )
+                }
+              />
+            )}
+            {matches('Probar campana de descanso') && (
+              <SettingsRow
+                icon={Bell}
+                label="Probar campana de descanso"
+                value="Reproducir"
+                onClick={playRestTimerBeep}
+              />
+            )}
+          </div>
+        </section>
+      )}
+
       {sectionVisible(['Tiempo de descanso', 'Calculadora de discos']) && (
         <section className="space-y-2">
           <h3 className={sectionTitleClass}>Herramientas</h3>
@@ -709,6 +779,9 @@ export const WorkoutSettingsView: React.FC<WorkoutSettingsViewProps> = ({
           'Superseries',
           'Dropsets',
           'Sets de calentamiento',
+          'Tamaño de letra de carga y reps',
+          'Tamaño del temporizador de descanso',
+          'Probar campana de descanso',
           'Tiempo de descanso',
           'Calculadora de discos'
         ]) && (

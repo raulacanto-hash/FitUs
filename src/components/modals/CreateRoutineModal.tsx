@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { X, Plus, Trash2, Dumbbell, Search } from 'lucide-react';
-import { RoutineTemplate, RoutineExerciseTemplate, ExerciseDefinition } from '../../types/workout';
+import { X, Plus, Trash2, Dumbbell, Search, ArrowLeftRight } from 'lucide-react';
+import { RoutineTemplate, RoutineExerciseTemplate, ExerciseDefinition, MuscleCategory } from '../../types/workout';
 import { useTheme } from '../../context/ThemeContext';
-import { RoutineExercisePicker } from './RoutineExercisePicker';
+import { ExerciseSelectorModal } from './ExerciseSelectorModal';
 
 interface CreateRoutineModalProps {
   isOpen: boolean;
@@ -10,6 +10,7 @@ interface CreateRoutineModalProps {
   exerciseList: ExerciseDefinition[];
   initialRoutine?: RoutineTemplate | null;
   onSaveRoutine: (routine: Omit<RoutineTemplate, 'id'> & { id?: string }) => void;
+  onCreateCustomExercise: (name: string, category: MuscleCategory) => ExerciseDefinition;
 }
 
 export const CreateRoutineModal: React.FC<CreateRoutineModalProps> = ({
@@ -17,7 +18,8 @@ export const CreateRoutineModal: React.FC<CreateRoutineModalProps> = ({
   onClose,
   exerciseList,
   initialRoutine,
-  onSaveRoutine
+  onSaveRoutine,
+  onCreateCustomExercise
 }) => {
   const { accent, isDark } = useTheme();
   const [name, setName] = useState('');
@@ -26,6 +28,7 @@ export const CreateRoutineModal: React.FC<CreateRoutineModalProps> = ({
   const [estimatedMinutes, setEstimatedMinutes] = useState(60);
   const [exercises, setExercises] = useState<RoutineExerciseTemplate[]>([]);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [replaceIndex, setReplaceIndex] = useState<number | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -45,6 +48,7 @@ export const CreateRoutineModal: React.FC<CreateRoutineModalProps> = ({
       setExercises([]);
     }
     setIsPickerOpen(false);
+    setReplaceIndex(null);
   }, [isOpen, initialRoutine]);
 
   if (!isOpen) return null;
@@ -62,6 +66,22 @@ export const CreateRoutineModal: React.FC<CreateRoutineModalProps> = ({
     window.setTimeout(() => {
       formRef.current?.scrollTo({ top: formRef.current.scrollHeight, behavior: 'smooth' });
     }, 80);
+  };
+
+  const handlePickerSelect = (definition: ExerciseDefinition) => {
+    if (replaceIndex !== null) {
+      setExercises((prev) =>
+        prev.map((exercise, index) =>
+          index === replaceIndex
+            ? { ...exercise, name: definition.name, category: definition.category }
+            : exercise
+        )
+      );
+      setReplaceIndex(null);
+    } else {
+      handleAddExercise(definition);
+    }
+    setIsPickerOpen(false);
   };
 
   const handleRemoveExercise = (index: number) => {
@@ -220,7 +240,10 @@ export const CreateRoutineModal: React.FC<CreateRoutineModalProps> = ({
 
               <button
                 type="button"
-                onClick={() => setIsPickerOpen(true)}
+                onClick={() => {
+                  setReplaceIndex(null);
+                  setIsPickerOpen(true);
+                }}
                 className={`w-full min-w-0 rounded-xl p-2.5 text-xs border flex items-center justify-between gap-2 text-left transition-colors active:scale-[0.99] ${
                   isDark
                     ? 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700'
@@ -256,14 +279,28 @@ export const CreateRoutineModal: React.FC<CreateRoutineModalProps> = ({
                     >
                       <div className="flex justify-between items-center gap-2 text-xs min-w-0">
                         <span className="font-bold min-w-0 break-words">{exercise.name}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveExercise(index)}
-                          className="text-zinc-400 hover:text-red-500 p-1 flex-shrink-0"
-                          aria-label={`Eliminar ${exercise.name}`}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        <div className="flex items-center gap-0.5 flex-shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setReplaceIndex(index);
+                              setIsPickerOpen(true);
+                            }}
+                            className="text-zinc-400 hover:text-lime-400 p-1"
+                            title="Cambiar ejercicio"
+                            aria-label={`Cambiar ${exercise.name}`}
+                          >
+                            <ArrowLeftRight className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveExercise(index)}
+                            className="text-zinc-400 hover:text-red-500 p-1"
+                            aria-label={`Eliminar ${exercise.name}`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-3 gap-2 text-[10px] text-zinc-400">
@@ -353,11 +390,16 @@ export const CreateRoutineModal: React.FC<CreateRoutineModalProps> = ({
         </div>
       </div>
 
-      <RoutineExercisePicker
+      <ExerciseSelectorModal
         isOpen={isPickerOpen}
         exerciseList={exerciseList}
-        onSelect={handleAddExercise}
-        onClose={() => setIsPickerOpen(false)}
+        onSelectExercise={handlePickerSelect}
+        onCreateCustomExercise={onCreateCustomExercise}
+        onClose={() => {
+          setIsPickerOpen(false);
+          setReplaceIndex(null);
+        }}
+        isReplaceMode={replaceIndex !== null}
       />
     </>
   );

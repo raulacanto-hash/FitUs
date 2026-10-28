@@ -1,110 +1,203 @@
-import React, { useState } from 'react';
-import { Calendar, Dumbbell, Plus, CheckCircle2, BookmarkPlus, ArrowLeft } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  ArrowLeft,
+  ArrowLeftRight,
+  BookmarkPlus,
+  Calendar,
+  CheckCircle2,
+  Dumbbell,
+  Layers,
+  Plus,
+  Timer,
+  Trash2,
+  X
+} from 'lucide-react';
 import { WorkoutSession } from '../../types/workout';
 import { RestTimerState } from '../../hooks/useRestTimer';
 import { QuickTimerBar } from './QuickTimerBar';
-import { ExerciseCard } from './ExerciseCard';
+import { SessionExerciseRow } from './SessionExerciseRow';
 import { useTheme } from '../../context/ThemeContext';
+import { formatDuration } from '../../utils/duration';
+import { formatVolume, getWorkoutSummary } from '../../utils/workoutStats';
 
 interface ActiveWorkoutViewProps {
   currentWorkout: WorkoutSession;
   timer: RestTimerState;
+  restTimerFontScale?: number;
   onUpdateRoutineName: (name: string) => void;
-  onToggleSet: (exerciseId: string, setId: string) => void;
-  onUpdateSet: (exerciseId: string, setId: string, field: 'weight' | 'reps', value: string) => void;
-  onAddSet: (exerciseId: string) => void;
-  onRemoveSet: (exerciseId: string, setId: string) => void;
+  onOpenExerciseDetail: (exerciseId: string) => void;
+  onReplaceExercise: (exerciseId: string) => void;
   onRemoveExercise: (exerciseId: string) => void;
-  onUpdateNotes: (exerciseId: string, notes: string) => void;
   onOpenExerciseModal: () => void;
   onFinishWorkout: () => void;
   onSaveAsRoutine?: (name: string, category: string) => void;
-  onBackToRoutines?: () => void;
-  onDiscardWorkout?: () => void;
+  onBack: () => void;
+  onDiscardWorkout: () => void;
 }
 
 export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({
   currentWorkout,
   timer,
+  restTimerFontScale = 1,
   onUpdateRoutineName,
-  onToggleSet,
-  onUpdateSet,
-  onAddSet,
-  onRemoveSet,
+  onOpenExerciseDetail,
+  onReplaceExercise,
   onRemoveExercise,
-  onUpdateNotes,
   onOpenExerciseModal,
   onFinishWorkout,
   onSaveAsRoutine,
-  onBackToRoutines,
+  onBack,
   onDiscardWorkout
 }) => {
   const { accent, isDark } = useTheme();
+  const [menuExerciseId, setMenuExerciseId] = useState<string | null>(null);
+  const [isFinishSheetOpen, setIsFinishSheetOpen] = useState(false);
+  const [isDiscardSheetOpen, setIsDiscardSheetOpen] = useState(false);
   const [isSavingRoutinePrompt, setIsSavingRoutinePrompt] = useState(false);
   const [saveRoutineName, setSaveRoutineName] = useState(currentWorkout.routineName);
   const [saveRoutineCategory, setSaveRoutineCategory] = useState('TORSO');
+  const [now, setNow] = useState(() => Date.now());
 
-  const handleConfirmSaveRoutine = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Mantiene visible la duración de la sesión sin depender del temporizador de descanso.
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 20000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  const summary = useMemo(() => getWorkoutSummary(currentWorkout), [currentWorkout]);
+  const elapsedMinutes = currentWorkout.startTime
+    ? Math.max(0, Math.floor((now - currentWorkout.startTime) / 60000))
+    : 0;
+
+  const menuExercise = currentWorkout.exercises.find(
+    (exercise) => exercise.id === menuExerciseId
+  );
+
+  const handleConfirmSaveRoutine = (event: React.FormEvent) => {
+    event.preventDefault();
     if (onSaveAsRoutine) {
       onSaveAsRoutine(saveRoutineName, saveRoutineCategory);
       setIsSavingRoutinePrompt(false);
     }
   };
 
-  return (
-    <div className={`space-y-4 animate-in fade-in duration-200 ${isDark ? 'text-zinc-100' : 'text-zinc-900'}`}>
-      {/* Botón superior de volver a rutinas si existe callback */}
-      {onBackToRoutines && (
-        <div className="flex items-center justify-between gap-2">
-          <button
-            type="button"
-            onClick={onBackToRoutines}
-            className={`text-xs flex items-center gap-1.5 transition-colors font-bold ${
-              isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-600 hover:text-zinc-950'
-            }`}
-          >
-            <ArrowLeft className="w-3.5 h-3.5" style={{ color: accent.hex }} /> Volver al catálogo de rutinas
-          </button>
-          {onDiscardWorkout && currentWorkout.exercises.length > 0 && (
-            <button
-              type="button"
-              onClick={onDiscardWorkout}
-              className="text-[10px] font-bold text-red-400 hover:text-red-300 transition-colors"
-            >
-              Descartar sesión
-            </button>
-          )}
-        </div>
-      )}
+  const handleRemoveFromMenu = (exerciseId: string, exerciseName: string) => {
+    if (
+      window.confirm(
+        `¿Quitar "${exerciseName}" de este entrenamiento? Las series registradas se perderán.`
+      )
+    ) {
+      onRemoveExercise(exerciseId);
+      setMenuExerciseId(null);
+    }
+  };
 
-      {/* Tarjeta de Inicio / Nombre de Rutina */}
-      <div className={`rounded-3xl p-4 border transition-all ${
-        isDark ? 'bg-zinc-900/60 border-zinc-800/80 backdrop-blur-md shadow-sm' : 'bg-white border-zinc-200 shadow-sm'
-      }`}>
-        <div className="flex justify-between items-center mb-3">
+  return (
+    <div className={`space-y-4 animate-in fade-in duration-200 pt-[max(0.75rem,env(safe-area-inset-top))] ${isDark ? 'text-zinc-100' : 'text-zinc-900'}`}>
+      {/* Barra de navegación de la sesión: atrás, título y salir */}
+      <div className="flex items-center justify-between gap-2 pt-1">
+        <button
+          type="button"
+          onClick={onBack}
+          className={`p-2 rounded-xl transition-colors ${
+            isDark ? 'hover:bg-zinc-800 text-zinc-300' : 'hover:bg-zinc-200 text-zinc-700'
+          }`}
+          title="Volver sin finalizar la sesión"
+          aria-label="Volver sin finalizar la sesión"
+        >
+          <ArrowLeft className="w-5 h-5" style={{ color: accent.hex }} />
+        </button>
+
+        <div className="min-w-0 flex-1 text-center">
           <input
             type="text"
             value={currentWorkout.routineName}
-            onChange={(e) => onUpdateRoutineName(e.target.value)}
-            className="bg-transparent text-lg font-black focus:outline-none focus:border-b w-full tracking-tight"
+            onChange={(event) => onUpdateRoutineName(event.target.value)}
+            className="w-full bg-transparent text-base font-black text-center tracking-tight focus:outline-none focus:border-b truncate"
             style={{ borderColor: accent.hex }}
-            placeholder="Nombre de la rutina..."
+            placeholder="Nombre del entrenamiento..."
+            aria-label="Nombre del entrenamiento"
           />
-          <span className={`text-[11px] px-2.5 py-1 rounded-xl border flex items-center gap-1 font-mono flex-shrink-0 ml-2 ${
-            isDark ? 'bg-zinc-800/80 text-zinc-300 border-zinc-700/50' : 'bg-zinc-100 text-zinc-700 border-zinc-200'
-          }`}>
+          <span className="text-[10px] font-mono text-zinc-500 flex items-center justify-center gap-1 mt-0.5">
             <Calendar className="w-3 h-3" style={{ color: accent.hex }} />
             {currentWorkout.date}
           </span>
         </div>
 
-        {/* Barra de descansos rápidos con soporte de +/- 15s */}
-        <QuickTimerBar timer={timer} />
+        <button
+          type="button"
+          onClick={() => setIsDiscardSheetOpen(true)}
+          className={`p-2 rounded-xl transition-colors ${
+            isDark ? 'hover:bg-zinc-800 text-zinc-400 hover:text-red-400' : 'hover:bg-zinc-200 text-zinc-500 hover:text-red-600'
+          }`}
+          title="Descartar entrenamiento"
+          aria-label="Descartar entrenamiento"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
 
-      {/* Lista de ejercicios agregados hoy */}
-      <div className="space-y-3">
+      {/* Resumen de la sesión */}
+      <div className={`rounded-3xl p-4 border space-y-3 ${
+        isDark ? 'bg-zinc-900/70 border-zinc-800/80 backdrop-blur-md' : 'bg-white border-zinc-200 shadow-sm'
+      }`}>
+        <div className="grid grid-cols-3 gap-2">
+          <div className={`rounded-2xl px-2 py-2 border text-center ${
+            isDark ? 'bg-zinc-950/60 border-zinc-800/80' : 'bg-zinc-50 border-zinc-200'
+          }`}>
+            <span className="text-[9px] uppercase tracking-wider font-bold text-zinc-500 flex items-center justify-center gap-1">
+              <Timer className="w-3 h-3" style={{ color: accent.hex }} /> Duración
+            </span>
+            <span className="text-sm font-mono font-black" style={{ color: accent.hex }}>
+              {formatDuration(elapsedMinutes)}
+            </span>
+          </div>
+          <div className={`rounded-2xl px-2 py-2 border text-center ${
+            isDark ? 'bg-zinc-950/60 border-zinc-800/80' : 'bg-zinc-50 border-zinc-200'
+          }`}>
+            <span className="text-[9px] uppercase tracking-wider font-bold text-zinc-500 flex items-center justify-center gap-1">
+              <Layers className="w-3 h-3" style={{ color: accent.hex }} /> Series
+            </span>
+            <span className="text-sm font-mono font-black">
+              {summary.completedSets}/{summary.totalSets}
+            </span>
+          </div>
+          <div className={`rounded-2xl px-2 py-2 border text-center ${
+            isDark ? 'bg-zinc-950/60 border-zinc-800/80' : 'bg-zinc-50 border-zinc-200'
+          }`}>
+            <span className="text-[9px] uppercase tracking-wider font-bold text-zinc-500 flex items-center justify-center gap-1">
+              <Dumbbell className="w-3 h-3" style={{ color: accent.hex }} /> Volumen
+            </span>
+            <span className="text-sm font-mono font-black">
+              {formatVolume(summary.totalVolume)}
+            </span>
+          </div>
+        </div>
+
+        <QuickTimerBar timer={timer} fontScale={restTimerFontScale} />
+      </div>
+
+      {/* Ejercicios de la sesión: solo resumen, se edita en la pantalla de captura */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold flex items-center gap-1.5">
+            {currentWorkout.exercises.length} ejercicios
+          </h3>
+          <button
+            type="button"
+            onClick={onOpenExerciseModal}
+            className={`p-1.5 rounded-xl border transition-colors ${
+              isDark
+                ? 'bg-zinc-900 border-zinc-800 hover:bg-zinc-800 text-zinc-300'
+                : 'bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-700'
+            }`}
+            title="Añadir ejercicio a la sesión"
+            aria-label="Añadir ejercicio a la sesión"
+          >
+            <Plus className="w-4 h-4" style={{ color: accent.hex }} />
+          </button>
+        </div>
+
         {currentWorkout.exercises.length === 0 ? (
           <div className={`text-center py-14 px-4 border border-dashed rounded-3xl ${
             isDark ? 'border-zinc-800/80 bg-zinc-900/30' : 'border-zinc-300 bg-white'
@@ -128,64 +221,258 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({
             </button>
           </div>
         ) : (
-          currentWorkout.exercises.map((exercise, exIndex) => (
-            <ExerciseCard
+          currentWorkout.exercises.map((exercise) => (
+            <SessionExerciseRow
               key={exercise.id}
               exercise={exercise}
-              exerciseIndex={exIndex}
-              onToggleSet={onToggleSet}
-              onUpdateSet={onUpdateSet}
-              onAddSet={onAddSet}
-              onRemoveSet={onRemoveSet}
-              onRemoveExercise={onRemoveExercise}
-              onUpdateNotes={onUpdateNotes}
+              onOpen={() => onOpenExerciseDetail(exercise.id)}
+              onOpenMenu={() => setMenuExerciseId(exercise.id)}
             />
           ))
         )}
       </div>
 
-      {/* Botones de Acción Global */}
+      {/* Acciones secundarias */}
       {currentWorkout.exercises.length > 0 && (
-        <div className="pt-2 space-y-2">
-          <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={onOpenExerciseModal}
+            className={`py-3 rounded-2xl text-xs font-bold border flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
+              isDark
+                ? 'bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-zinc-200'
+                : 'bg-white hover:bg-zinc-100 border-zinc-300 text-zinc-800 shadow-sm'
+            }`}
+          >
+            <Plus className="w-4 h-4" style={{ color: accent.hex }} /> Añadir Ejercicio
+          </button>
+
+          {onSaveAsRoutine && (
             <button
               type="button"
-              onClick={onOpenExerciseModal}
+              onClick={() => {
+                setSaveRoutineName(currentWorkout.routineName);
+                setIsSavingRoutinePrompt(true);
+              }}
               className={`py-3 rounded-2xl text-xs font-bold border flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
-                isDark 
-                  ? 'bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-zinc-200' 
+                isDark
+                  ? 'bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-zinc-200'
                   : 'bg-white hover:bg-zinc-100 border-zinc-300 text-zinc-800 shadow-sm'
               }`}
             >
-              <Plus className="w-4 h-4" style={{ color: accent.hex }} /> Añadir Ejercicio
+              <BookmarkPlus className="w-4 h-4" style={{ color: accent.hex }} /> Guardar Rutina
             </button>
+          )}
+        </div>
+      )}
 
-            {onSaveAsRoutine && (
+      {/* Botón fijo para finalizar; abre una confirmación antes de guardar */}
+      <div
+        className={`fixed bottom-0 left-0 right-0 z-30 max-w-lg mx-auto px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-lg border-t ${
+          isDark ? 'bg-zinc-950/85 border-zinc-800/60' : 'bg-white/85 border-zinc-200'
+        }`}
+      >
+        <button
+          type="button"
+          onClick={() => setIsFinishSheetOpen(true)}
+          disabled={currentWorkout.exercises.length === 0}
+          style={{ backgroundColor: accent.hex }}
+          className={`w-full py-4 rounded-full font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-2xl active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed ${accent.contrastText}`}
+        >
+          <CheckCircle2 className="w-4 h-4" /> Finalizar
+        </button>
+      </div>
+
+      {/* Menú de acciones del ejercicio */}
+      {menuExercise && (
+        <div
+          className="fixed inset-0 z-50 bg-zinc-950/80 backdrop-blur-md flex items-end sm:items-center justify-center p-3 animate-in fade-in duration-200"
+          onClick={() => setMenuExerciseId(null)}
+        >
+          <div
+            onClick={(event) => event.stopPropagation()}
+            className={`w-full max-w-sm rounded-3xl border shadow-2xl overflow-hidden ${
+              isDark ? 'bg-zinc-900 border-zinc-800 text-zinc-100' : 'bg-white border-zinc-200 text-zinc-900'
+            }`}
+          >
+            <div className={`flex items-start justify-between gap-2 px-4 py-3 border-b ${isDark ? 'border-zinc-800' : 'border-zinc-200'}`}>
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-wider font-bold text-zinc-500">Ejercicio</p>
+                <h3 className="text-sm font-black truncate">{menuExercise.name}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMenuExerciseId(null)}
+                className="p-1 rounded-lg text-zinc-400 hover:text-white"
+                aria-label="Cerrar"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-2 space-y-1">
               <button
                 type="button"
                 onClick={() => {
-                  setSaveRoutineName(currentWorkout.routineName);
-                  setIsSavingRoutinePrompt(true);
+                  onOpenExerciseDetail(menuExercise.id);
+                  setMenuExerciseId(null);
                 }}
-                className={`py-3 rounded-2xl text-xs font-bold border flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
-                  isDark 
-                    ? 'bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-zinc-200' 
-                    : 'bg-white hover:bg-zinc-100 border-zinc-300 text-zinc-800 shadow-sm'
+                className={`w-full flex items-center gap-2.5 px-3 py-3 rounded-xl text-left text-xs font-semibold transition-colors ${
+                  isDark ? 'hover:bg-zinc-800' : 'hover:bg-zinc-100'
                 }`}
               >
-                <BookmarkPlus className="w-4 h-4" style={{ color: accent.hex }} /> Guardar Rutina
+                <Layers className="w-4 h-4" style={{ color: accent.hex }} />
+                Abrir captura de series
               </button>
-            )}
+              <button
+                type="button"
+                onClick={() => {
+                  onReplaceExercise(menuExercise.id);
+                  setMenuExerciseId(null);
+                }}
+                className={`w-full flex items-center gap-2.5 px-3 py-3 rounded-xl text-left text-xs font-semibold transition-colors ${
+                  isDark ? 'hover:bg-zinc-800' : 'hover:bg-zinc-100'
+                }`}
+              >
+                <ArrowLeftRight className="w-4 h-4" style={{ color: accent.hex }} />
+                Reemplazar ejercicio
+              </button>
+              <button
+                type="button"
+                onClick={() => handleRemoveFromMenu(menuExercise.id, menuExercise.name)}
+                className={`w-full flex items-center gap-2.5 px-3 py-3 rounded-xl text-left text-xs font-semibold transition-colors text-red-400 ${
+                  isDark ? 'hover:bg-red-950/30' : 'hover:bg-red-50'
+                }`}
+              >
+                <Trash2 className="w-4 h-4" />
+                Quitar ejercicio
+              </button>
+            </div>
           </div>
+        </div>
+      )}
 
-          <button
-            type="button"
-            onClick={onFinishWorkout}
-            style={{ backgroundColor: accent.hex }}
-            className={`w-full py-4 rounded-2xl text-xs uppercase font-black tracking-wider flex items-center justify-center gap-2 shadow-xl active:scale-95 transition-all ${accent.contrastText}`}
+      {/* Confirmación para finalizar */}
+      {isFinishSheetOpen && (
+        <div
+          className="fixed inset-0 z-[60] bg-zinc-950/80 backdrop-blur-md flex items-end sm:items-center justify-center p-3 animate-in fade-in duration-200"
+          onClick={() => setIsFinishSheetOpen(false)}
+        >
+          <div
+            onClick={(event) => event.stopPropagation()}
+            className={`w-full max-w-sm rounded-3xl border shadow-2xl p-4 space-y-3 ${
+              isDark ? 'bg-zinc-900 border-zinc-800 text-zinc-100' : 'bg-white border-zinc-200 text-zinc-900'
+            }`}
           >
-            <CheckCircle2 className="w-4 h-4" /> Finalizar y Guardar Sesión
-          </button>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-black">¿Finalizar entrenamiento?</h3>
+              <button
+                type="button"
+                onClick={() => setIsFinishSheetOpen(false)}
+                className="p-1 rounded-lg text-zinc-400 hover:text-white"
+                aria-label="Cerrar"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className={`text-[11px] leading-relaxed ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>
+              La sesión se guardará en tu historial y dejará de estar activa. Revisa el resumen
+              antes de confirmar.
+            </p>
+
+            <div className={`grid grid-cols-3 gap-2 text-center rounded-2xl p-2.5 border ${
+              isDark ? 'bg-zinc-950/60 border-zinc-800' : 'bg-zinc-50 border-zinc-200'
+            }`}>
+              <div>
+                <p className="text-[9px] uppercase font-bold text-zinc-500">Duración</p>
+                <p className="text-xs font-mono font-black">{formatDuration(elapsedMinutes)}</p>
+              </div>
+              <div>
+                <p className="text-[9px] uppercase font-bold text-zinc-500">Series</p>
+                <p className="text-xs font-mono font-black">{summary.completedSets}/{summary.totalSets}</p>
+              </div>
+              <div>
+                <p className="text-[9px] uppercase font-bold text-zinc-500">Volumen</p>
+                <p className="text-xs font-mono font-black">{formatVolume(summary.totalVolume)}</p>
+              </div>
+            </div>
+
+            <div className="space-y-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsFinishSheetOpen(false);
+                  onFinishWorkout();
+                }}
+                style={{ backgroundColor: accent.hex }}
+                className={`w-full py-3 rounded-2xl text-xs font-black uppercase tracking-wider ${accent.contrastText}`}
+              >
+                Finalizar y guardar
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsFinishSheetOpen(false)}
+                className={`w-full py-2.5 rounded-2xl text-xs font-bold ${
+                  isDark ? 'bg-zinc-800 text-zinc-300' : 'bg-zinc-100 text-zinc-700'
+                }`}
+              >
+                Seguir entrenando
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmación para descartar */}
+      {isDiscardSheetOpen && (
+        <div
+          className="fixed inset-0 z-[60] bg-zinc-950/80 backdrop-blur-md flex items-end sm:items-center justify-center p-3 animate-in fade-in duration-200"
+          onClick={() => setIsDiscardSheetOpen(false)}
+        >
+          <div
+            onClick={(event) => event.stopPropagation()}
+            className={`w-full max-w-sm rounded-3xl border shadow-2xl p-4 space-y-3 ${
+              isDark ? 'bg-zinc-900 border-zinc-800 text-zinc-100' : 'bg-white border-zinc-200 text-zinc-900'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-black">¿Descartar entrenamiento?</h3>
+              <button
+                type="button"
+                onClick={() => setIsDiscardSheetOpen(false)}
+                className="p-1 rounded-lg text-zinc-400 hover:text-white"
+                aria-label="Cerrar"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className={`text-[11px] leading-relaxed ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>
+              Se perderán las series y notas capturadas en esta sesión. Esta acción no se puede
+              deshacer.
+            </p>
+            <div className="space-y-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsDiscardSheetOpen(false);
+                  onDiscardWorkout();
+                }}
+                className="w-full py-3 rounded-2xl text-xs font-black uppercase tracking-wider bg-red-500 text-white"
+              >
+                Sí, descartar sesión
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsDiscardSheetOpen(false)}
+                className={`w-full py-2.5 rounded-2xl text-xs font-bold ${
+                  isDark ? 'bg-zinc-800 text-zinc-300' : 'bg-zinc-100 text-zinc-700'
+                }`}
+              >
+                Seguir entrenando
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -204,7 +491,7 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({
                 <input
                   type="text"
                   value={saveRoutineName}
-                  onChange={(e) => setSaveRoutineName(e.target.value)}
+                  onChange={(event) => setSaveRoutineName(event.target.value)}
                   className={`w-full rounded-xl p-2.5 border focus:outline-none ${
                     isDark ? 'bg-zinc-950 border-zinc-800 text-white' : 'bg-zinc-50 border-zinc-200 text-zinc-900'
                   }`}
@@ -217,7 +504,7 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({
                 <input
                   type="text"
                   value={saveRoutineCategory}
-                  onChange={(e) => setSaveRoutineCategory(e.target.value)}
+                  onChange={(event) => setSaveRoutineCategory(event.target.value)}
                   className={`w-full rounded-xl p-2.5 border focus:outline-none ${
                     isDark ? 'bg-zinc-950 border-zinc-800 text-white' : 'bg-zinc-50 border-zinc-200 text-zinc-900'
                   }`}

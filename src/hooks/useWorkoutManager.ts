@@ -134,7 +134,6 @@ export function useWorkoutManager() {
   }, []);
 
   const handleDiscardWorkout = useCallback(() => {
-    if (!window.confirm('¿Descartar la sesión actual? No se guardará en el historial.')) return;
     setCurrentWorkout(createNewWorkoutSession());
   }, []);
 
@@ -239,7 +238,7 @@ export function useWorkoutManager() {
     }));
   }, [ensureStartTime]);
 
-  const handleAddSet = useCallback((exerciseId: string) => {
+  const handleAddSet = useCallback((exerciseId: string, isWarmup = false) => {
     ensureStartTime();
     setCurrentWorkout(prev => ({
       ...prev,
@@ -248,9 +247,10 @@ export function useWorkoutManager() {
         const lastSet = ex.sets[ex.sets.length - 1];
         const newSet = {
           id: `st-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-          reps: lastSet && lastSet.reps !== '' ? lastSet.reps : 10,
-          weight: lastSet && lastSet.weight !== '' ? lastSet.weight : 20,
-          completed: false
+          reps: isWarmup ? 12 : lastSet && lastSet.reps !== '' ? lastSet.reps : 10,
+          weight: isWarmup ? 20 : lastSet && lastSet.weight !== '' ? lastSet.weight : 20,
+          completed: false,
+          isWarmup: isWarmup || undefined
         };
         return { ...ex, sets: [...ex.sets, newSet] };
       })
@@ -273,6 +273,18 @@ export function useWorkoutManager() {
       exercises: prev.exercises.map(ex => ex.id === exerciseId ? { ...ex, notes } : ex)
     }));
   }, []);
+
+  // Actualiza un ejercicio completo (series, notas) desde la pantalla de captura
+  const handleUpdateExerciseDetails = useCallback(
+    (exerciseId: string, updates: Partial<Pick<WorkoutExercise, 'sets' | 'notes' | 'name' | 'category'>>) => {
+      ensureStartTime();
+      setCurrentWorkout(prev => ({
+        ...prev,
+        exercises: prev.exercises.map(ex => (ex.id === exerciseId ? { ...ex, ...updates } : ex))
+      }));
+    },
+    [ensureStartTime]
+  );
 
   const handleRemoveExercise = useCallback((exerciseId: string) => {
     setCurrentWorkout(prev => ({
@@ -313,20 +325,136 @@ export function useWorkoutManager() {
     }
   }, [editingWorkout, ensureStartTime]);
 
-  // Crear ejercicio personalizado
-  const handleCreateCustomExercise = useCallback((name: string, category: MuscleCategory) => {
-    if (!name.trim()) return;
-    const customObj: ExerciseDefinition = {
-      id: `custom-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      name: name.trim(),
-      category,
-      equipment: 'Personalizado',
-      isCustom: true
-    };
+  // Crear un ejercicio personalizado en el catálogo (sin agregarlo a una sesión)
+  const handleCreateCustomExerciseDefinition = useCallback(
+    (name: string, category: MuscleCategory): ExerciseDefinition => {
+      const customObj: ExerciseDefinition = {
+        id: `custom-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        name: name.trim(),
+        category,
+        equipment: 'Personalizado',
+        isCustom: true
+      };
 
-    setCustomExercises(prev => [...prev, customObj]);
-    handleSelectExerciseFromDb(customObj);
-  }, [handleSelectExerciseFromDb]);
+      setCustomExercises(prev => [...prev, customObj]);
+      return customObj;
+    },
+    []
+  );
+
+  // Crear ejercicio personalizado y agregarlo a la sesión en curso
+  const handleCreateCustomExercise = useCallback(
+    (name: string, category: MuscleCategory): ExerciseDefinition => {
+      const customObj = handleCreateCustomExerciseDefinition(name, category);
+      handleSelectExerciseFromDb(customObj);
+      return customObj;
+    },
+    [handleCreateCustomExerciseDefinition, handleSelectExerciseFromDb]
+  );
+
+  // Cambiar el ejercicio de una plantilla guardada desde el catálogo
+  const handleReplaceRoutineExercise = useCallback(
+    (routineId: string, exerciseIndex: number, definition: ExerciseDefinition) => {
+      setRoutineTemplates(prev =>
+        prev.map(routine => {
+          if (routine.id !== routineId) return routine;
+          return {
+            ...routine,
+            exercises: routine.exercises.map((exercise, index) =>
+              index === exerciseIndex
+                ? {
+                    name: definition.name,
+                    category: definition.category,
+                    targetSets: exercise.targetSets,
+                    defaultReps: exercise.defaultReps,
+                    defaultWeight: exercise.defaultWeight
+                  }
+                : exercise
+            )
+          };
+        })
+      );
+    },
+    []
+  );
+
+  // Eliminar un ejercicio de una plantilla guardada
+  const handleRemoveRoutineExercise = useCallback((routineId: string, exerciseIndex: number) => {
+    setRoutineTemplates(prev =>
+      prev.map(routine =>
+        routine.id === routineId
+          ? {
+              ...routine,
+              exercises: routine.exercises.filter((_, index) => index !== exerciseIndex)
+            }
+          : routine
+      )
+    );
+  }, []);
+
+  // Actualizar series, reps y carga objetivo de un ejercicio de la plantilla
+  const handleUpdateRoutineExercise = useCallback(
+    (
+      routineId: string,
+      exerciseIndex: number,
+      updates: Partial<Pick<RoutineTemplate['exercises'][number], 'targetSets' | 'defaultReps' | 'defaultWeight'>>
+    ) => {
+      setRoutineTemplates(prev =>
+        prev.map(routine =>
+          routine.id === routineId
+            ? {
+                ...routine,
+                exercises: routine.exercises.map((exercise, index) =>
+                  index === exerciseIndex
+                    ? {
+                        ...exercise,
+                        ...updates,
+                        repsRange: undefined,
+                        weightRange: undefined
+                      }
+                    : exercise
+                )
+              }
+            : routine
+        )
+      );
+    },
+    []
+  );
+
+  // Cambiar el ejercicio de un entrenamiento del historial que se está editando
+  const handleReplaceEditingExercise = useCallback(
+    (exerciseId: string, definition: ExerciseDefinition) => {
+      setEditingWorkout(prev =>
+        prev
+          ? {
+              ...prev,
+              exercises: prev.exercises.map(exercise =>
+                exercise.id === exerciseId
+                  ? { ...exercise, name: definition.name, category: definition.category }
+                  : exercise
+              )
+            }
+          : null
+      );
+    },
+    []
+  );
+
+  // Cambiar un ejercicio de la sesión activa desde el catálogo
+  const handleReplaceCurrentExercise = useCallback(
+    (exerciseId: string, definition: ExerciseDefinition) => {
+      setCurrentWorkout(prev => ({
+        ...prev,
+        exercises: prev.exercises.map(exercise =>
+          exercise.id === exerciseId
+            ? { ...exercise, name: definition.name, category: definition.category }
+            : exercise
+        )
+      }));
+    },
+    []
+  );
 
   // Finalizar entrenamiento activo
   const handleFinishWorkout = useCallback((): boolean => {
@@ -563,10 +691,17 @@ export function useWorkoutManager() {
     handleAddSet,
     handleRemoveSet,
     handleUpdateNotes,
+    handleUpdateExerciseDetails,
     handleRemoveExercise,
     handleUpdateRoutineName,
     handleSelectExerciseFromDb,
     handleCreateCustomExercise,
+    handleCreateCustomExerciseDefinition,
+    handleReplaceRoutineExercise,
+    handleRemoveRoutineExercise,
+    handleUpdateRoutineExercise,
+    handleReplaceEditingExercise,
+    handleReplaceCurrentExercise,
     handleFinishWorkout,
     handleStartEditWorkout,
     handleStartNewPastWorkout,

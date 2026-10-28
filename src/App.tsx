@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActiveTab, RoutineTemplate, WorkoutExercise, WorkoutSession } from './types/workout';
+import { ActiveTab, ExerciseDefinition, MuscleCategory, RoutineTemplate, WorkoutExercise, WorkoutSession } from './types/workout';
 import { useRestTimer } from './hooks/useRestTimer';
 import { useWorkoutManager } from './hooks/useWorkoutManager';
 import { useBodyMetrics } from './hooks/useBodyMetrics';
 import { useWorkoutSettings } from './hooks/useWorkoutSettings';
+import { getFontScaleFactor } from './data/workoutSettingsDefaults';
 import { INITIAL_USER_PROFILE } from './data/initialBodyData';
 import { exportToExcel, exportWorkoutsCsv, parseImportFile } from './utils/spreadsheet';
 import { buildRoutineFromWorkout } from './utils/routineFromWorkout';
@@ -26,7 +27,7 @@ import { ProfileModal } from './components/profile/ProfileModal';
 import { ExerciseSelectorModal } from './components/modals/ExerciseSelectorModal';
 import { CreateRoutineModal } from './components/modals/CreateRoutineModal';
 import { EditWorkoutModal } from './components/modals/EditWorkoutModal';
-import { Dumbbell, Sparkles, CloudOff } from 'lucide-react';
+import { Dumbbell, CloudOff } from 'lucide-react';
 
 const MainAppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('train');
@@ -41,6 +42,14 @@ const MainAppContent: React.FC = () => {
   const [isCreateRoutineModalOpen, setIsCreateRoutineModalOpen] = useState(false);
   const [routineToEdit, setRoutineToEdit] = useState<RoutineTemplate | null>(null);
 
+  // Ejercicio que se va a reemplazar (rutina guardada o entrenamiento del historial)
+  const [replaceTarget, setReplaceTarget] = useState<
+    | { kind: 'routine'; routineId: string; exerciseIndex: number }
+    | { kind: 'workout'; exerciseId: string }
+    | { kind: 'current'; exerciseId: string }
+    | null
+  >(null);
+
   const timer = useRestTimer();
   const manager = useWorkoutManager();
   const body = useBodyMetrics();
@@ -49,15 +58,6 @@ const MainAppContent: React.FC = () => {
   const { isDark, accent } = useTheme();
   const cloud = useCloudSync();
   const prefilledProfileUidRef = useRef<string | null>(null);
-
-  // Al completar una serie, iniciar automáticamente el descanso configurado
-  const handleToggleSetWithTimer = (exerciseId: string, setId: string) => {
-    manager.handleToggleSet(exerciseId, setId, () => {
-      if (workoutSettings.settings.restTimer) {
-        timer.startTimer(timer.initialDuration || 90);
-      }
-    });
-  };
 
   // Si el perfil sigue con el nombre de ejemplo, usar el nombre de Google
   useEffect(() => {
@@ -71,6 +71,23 @@ const MainAppContent: React.FC = () => {
   }, [body, cloud.user, profile.name]);
 
   const handleStartRoutine = (routine: RoutineTemplate) => {
+    const activeSession =
+      Boolean(manager.currentWorkout.startTime) ||
+      manager.currentWorkout.exercises.some((exercise) =>
+        exercise.sets.some((set) => set.completed)
+      );
+
+    // Evita reemplazar por accidente una sesión que ya está en curso.
+    if (activeSession) {
+      const shouldReplace = window.confirm(
+        `Ya tienes "${manager.currentWorkout.routineName}" en curso. ¿Deseas reemplazarla por "${routine.name}"?`
+      );
+      if (!shouldReplace) {
+        setTrainViewMode('active');
+        return;
+      }
+    }
+
     if (workoutSettings.settings.activeRoutineId !== routine.id) {
       workoutSettings.updateSettings({ activeRoutineId: routine.id });
     }
@@ -93,6 +110,96 @@ const MainAppContent: React.FC = () => {
     setRoutineToEdit(routine);
     setIsCreateRoutineModalOpen(true);
   };
+
+  // Selección desde el catálogo: agrega al entrenamiento en curso o reemplaza
+  // el ejercicio de una rutina/historial si venimos de "Cambiar ejercicio".
+  const handleSelectExerciseFromCatalog = (definition: ExerciseDefinition) => {
+    const target = replaceTarget;
+    setReplaceTarget(null);
+
+    if (target?.kind === 'routine') {
+      manager.handleReplaceRoutineExercise(target.routineId, target.exerciseIndex, definition);
+      return;
+    }
+    if (target?.kind === 'workout') {
+      manager.handleReplaceEditingExercise(target.exerciseId, definition);
+      return;
+    }
+    if (target?.kind === 'current') {
+      manager.handleReplaceCurrentExercise(target.exerciseId, definition);
+      setSelectedExerciseForModal((prev) =>
+        prev && prev.id === target.exerciseId
+          ? { ...prev, name: definition.name, category: definition.category }
+          : prev
+      );
+      return;
+    }
+
+    manager.handleSelectExerciseFromDb(definition);
+  };
+
+  const handleCloseExerciseModal = () => {
+    setIsExerciseModalOpen(false);
+    setReplaceTarget(null);
+  };
+
+  const handleReplaceRoutineExercise = (exerciseIndex: number) => {
+    if (!selectedRoutineForDetail) return;
+    setReplaceTarget({ kind: 'routine', routineId: selectedRoutineForDetail.id, exerciseIndex });
+    setIsExerciseModalOpen(true);
+  };
+
+  const handleReplaceHistoryExercise = (exerciseId: string) => {
+    setReplaceTarget({ kind: 'workout', exerciseId });
+    setIsExerciseModalOpen(true);
+  };
+
+  const handleReplaceCurrentExercise = (exerciseId: string) => {
+    setReplaceTarget({ kind: 'current', exerciseId });
+    setIsExerciseModalOpen(true);
+  };
+
+  const handleRegisterSetFromDetail = (setId: string) => {
+    const exercise = selectedExerciseForModal;
+    if (!exercise) return;
+
+    const targetSet = exercise.sets.find((set) => set.id === setId);
+    if (!targetSet || targetSet.completed) return;
+
+    manager.handleToggleSet(exercise.id, setId, () => {
+      if (workoutSettings.settings.restTimer) {
+        timer.startTimer(timer.initialDuration || 90);
+      }
+    });
+
+    setSelectedExerciseForModal({
+      ...exercise,
+      sets: exercise.sets.map((set) =>
+        set.id === setId ? { ...set, completed: true } : set
+      )
+    });
+  };
+
+  const handleUnregisterSetFromDetail = (setId: string) => {
+    const exercise = selectedExerciseForModal;
+    if (!exercise) return;
+
+    const targetSet = exercise.sets.find((set) => set.id === setId);
+    if (!targetSet?.completed) return;
+
+    manager.handleToggleSet(exercise.id, setId);
+    setSelectedExerciseForModal({
+      ...exercise,
+      sets: exercise.sets.map((set) =>
+        set.id === setId ? { ...set, completed: false } : set
+      )
+    });
+  };
+
+  const handleCreateCustomExerciseDefinition = (
+    name: string,
+    category: MuscleCategory
+  ): ExerciseDefinition => manager.handleCreateCustomExerciseDefinition(name, category);
 
   const handleDeleteRoutine = (id: string) => {
     if (!manager.handleDeleteRoutineTemplate(id)) return;
@@ -129,6 +236,28 @@ const MainAppContent: React.FC = () => {
       manager.handleStartEmptyWorkout();
     }
     setTrainViewMode('active');
+  };
+
+  // Volver desde la sesión sin finalizarla: si vino de una rutina,
+  // regresamos a su detalle para mantener el contexto.
+  const handleBackFromActiveWorkout = () => {
+    const routine = manager.currentWorkout.routineId
+      ? manager.routineTemplates.find(
+          (template) => template.id === manager.currentWorkout.routineId
+        )
+      : undefined;
+
+    if (routine) {
+      setSelectedRoutineForDetail(routine);
+      setTrainViewMode('detail');
+      return;
+    }
+    setTrainViewMode('routines');
+  };
+
+  const handleDiscardActiveWorkout = () => {
+    manager.handleDiscardWorkout();
+    setTrainViewMode('routines');
   };
 
   const handleViewAllHistory = () => {
@@ -240,13 +369,19 @@ const MainAppContent: React.FC = () => {
 
   const isWorkoutSettingsView =
     activeTab === 'train' && trainViewMode === 'workoutSettings';
+  const isActiveWorkoutView =
+    activeTab === 'train' && trainViewMode === 'active';
+  const isImmersiveView = isWorkoutSettingsView || isActiveWorkoutView;
+
+  const inputFontScale = getFontScaleFactor(workoutSettings.settings.inputFontScale);
+  const restTimerFontScale = getFontScaleFactor(workoutSettings.settings.restTimerFontScale);
 
   return (
     <div className={`min-h-screen flex flex-col font-sans antialiased transition-colors duration-200 ${
-      isWorkoutSettingsView ? 'pb-6' : 'pb-24'
+      isWorkoutSettingsView ? 'pb-6' : isActiveWorkoutView ? 'pb-32' : 'pb-24'
     } ${isDark ? 'bg-zinc-950 text-zinc-100' : 'bg-zinc-50 text-zinc-900'}`}>
       {/* Header Superior con Glassmorphism, Timer y botón de tema */}
-      {!isWorkoutSettingsView && <Header timer={timer} />}
+      {!isImmersiveView && <Header timer={timer} timerFontScale={restTimerFontScale} />}
 
       {/* Contenedor Principal */}
       <main className="flex-1 max-w-lg w-full mx-auto px-4 pt-3">
@@ -322,36 +457,6 @@ const MainAppContent: React.FC = () => {
               </div>
             )}
 
-            {/* Alternador de Vista si estamos en Rutinas o Activo */}
-            {(trainViewMode === 'routines' || trainViewMode === 'active') && (
-              <div className={`flex rounded-2xl p-1 mb-2 border ${
-                isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-200 shadow-sm'
-              }`}>
-                <button
-                  type="button"
-                  onClick={() => setTrainViewMode('routines')}
-                  className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                    trainViewMode === 'routines'
-                      ? isDark ? 'bg-zinc-800 text-white shadow-sm' : 'bg-zinc-100 text-zinc-900 shadow-sm font-black'
-                      : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-white'
-                  }`}
-                >
-                  <Sparkles className="w-3.5 h-3.5" style={{ color: accent.hex }} /> Rutinas
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTrainViewMode('active')}
-                  className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                    trainViewMode === 'active'
-                      ? isDark ? 'bg-zinc-800 text-white shadow-sm' : 'bg-zinc-100 text-zinc-900 shadow-sm font-black'
-                      : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-white'
-                  }`}
-                >
-                  <Dumbbell className="w-3.5 h-3.5" style={{ color: accent.hex }} /> Sesión Activa
-                </button>
-              </div>
-            )}
-
             {/* Vista 1A: Hub de Rutinas */}
             {trainViewMode === 'routines' && (
               <RoutinesHub
@@ -380,6 +485,13 @@ const MainAppContent: React.FC = () => {
                 onAddExerciseClick={() => handleOpenEditRoutine(activeRoutineDetail)}
                 onEditRoutine={handleOpenEditRoutine}
                 onDeleteRoutine={handleDeleteRoutine}
+                onReplaceExercise={handleReplaceRoutineExercise}
+                onRemoveExercise={(exerciseIndex) =>
+                  manager.handleRemoveRoutineExercise(activeRoutineDetail.id, exerciseIndex)
+                }
+                onUpdateExerciseTargets={(exerciseIndex, updates) =>
+                  manager.handleUpdateRoutineExercise(activeRoutineDetail.id, exerciseIndex, updates)
+                }
               />
             )}
 
@@ -388,18 +500,21 @@ const MainAppContent: React.FC = () => {
               <ActiveWorkoutView
                 currentWorkout={manager.currentWorkout}
                 timer={timer}
+                restTimerFontScale={restTimerFontScale}
                 onUpdateRoutineName={manager.handleUpdateRoutineName}
-                onToggleSet={handleToggleSetWithTimer}
-                onUpdateSet={manager.handleUpdateSet}
-                onAddSet={manager.handleAddSet}
-                onRemoveSet={manager.handleRemoveSet}
+                onOpenExerciseDetail={(exerciseId) => {
+                  const found = manager.currentWorkout.exercises.find(
+                    (exercise) => exercise.id === exerciseId
+                  );
+                  if (found) setSelectedExerciseForModal(found);
+                }}
+                onReplaceExercise={handleReplaceCurrentExercise}
                 onRemoveExercise={manager.handleRemoveExercise}
-                onUpdateNotes={manager.handleUpdateNotes}
                 onOpenExerciseModal={() => setIsExerciseModalOpen(true)}
                 onFinishWorkout={handleFinishWorkout}
                 onSaveAsRoutine={manager.handleSaveCurrentAsRoutine}
-                onBackToRoutines={() => setTrainViewMode('routines')}
-                onDiscardWorkout={manager.handleDiscardWorkout}
+                onBack={handleBackFromActiveWorkout}
+                onDiscardWorkout={handleDiscardActiveWorkout}
               />
             )}
 
@@ -471,10 +586,11 @@ const MainAppContent: React.FC = () => {
       {/* Modal de Catálogo y Creación de Ejercicios */}
       <ExerciseSelectorModal
         isOpen={isExerciseModalOpen}
-        onClose={() => setIsExerciseModalOpen(false)}
+        onClose={handleCloseExerciseModal}
         exerciseList={manager.fullExerciseList}
-        onSelectExercise={manager.handleSelectExerciseFromDb}
-        onCreateCustomExercise={manager.handleCreateCustomExercise}
+        onSelectExercise={handleSelectExerciseFromCatalog}
+        onCreateCustomExercise={handleCreateCustomExerciseDefinition}
+        isReplaceMode={replaceTarget !== null}
       />
 
       {/* Modal para Diseñar Nueva Plantilla de Rutina */}
@@ -487,6 +603,7 @@ const MainAppContent: React.FC = () => {
         exerciseList={manager.fullExerciseList}
         initialRoutine={routineToEdit}
         onSaveRoutine={manager.handleCreateRoutineTemplate}
+        onCreateCustomExercise={handleCreateCustomExerciseDefinition}
       />
 
       {/* Modal de Edición del Historial */}
@@ -499,6 +616,7 @@ const MainAppContent: React.FC = () => {
           manager.setEditingWorkout((prev) => (prev ? updater(prev) : null));
         }}
         onOpenAddExercise={() => setIsExerciseModalOpen(true)}
+        onReplaceExercise={handleReplaceHistoryExercise}
       />
 
       {/* Modal de perfil de usuario */}
@@ -512,16 +630,23 @@ const MainAppContent: React.FC = () => {
       {/* Modal de Registro Detallado de Ejercicio (Screenshot 3) */}
       <ExerciseDetailModal
         exercise={selectedExerciseForModal}
+        timer={timer}
+        timerFontScale={restTimerFontScale}
+        inputFontScale={inputFontScale}
         onClose={() => setSelectedExerciseForModal(null)}
         onUpdateExercise={(updated) => {
           setSelectedExerciseForModal(updated);
-          manager.handleUpdateNotes(updated.id, updated.notes);
+          manager.handleUpdateExerciseDetails(updated.id, {
+            sets: updated.sets,
+            notes: updated.notes
+          });
         }}
-        onStartOrSave={() => setSelectedExerciseForModal(null)}
+        onRegisterSet={handleRegisterSetFromDetail}
+        onUnregisterSet={handleUnregisterSetFromDetail}
       />
 
       {/* Barra de Navegación Inferior Móvil */}
-      {!isWorkoutSettingsView && (
+      {!isImmersiveView && (
         <BottomNav 
           activeTab={activeTab} 
           onTabChange={setActiveTab}

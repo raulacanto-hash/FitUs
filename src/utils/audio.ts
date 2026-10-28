@@ -1,6 +1,11 @@
 // Web Audio API singleton con desbloqueo en interacción de usuario
 let audioContext: AudioContext | null = null;
 
+// Campana real de fin de descanso (grabación de ElevenLabs)
+const REST_BELL_SRC = `${import.meta.env.BASE_URL}sounds/rest-bell.mp3`;
+let restBellBuffer: AudioBuffer | null = null;
+let restBellLoad: Promise<AudioBuffer | null> | null = null;
+
 /**
  * Desbloquea o inicializa el AudioContext durante un evento de usuario (click/tap)
  */
@@ -15,18 +20,76 @@ export function unlockAudio(): void {
       audioContext = new AudioCtx();
     }
     if (audioContext.state === 'suspended') {
-      audioContext.resume();
+      void audioContext.resume().catch(() => undefined);
     }
   } catch (e) {
     console.warn('No se pudo inicializar Web Audio Context:', e);
   }
+
+  // Aprovechamos el gesto del usuario para decodificar la campana y dejarla
+  // lista: luego el AudioContext ya está desbloqueado y suena al terminar.
+  primeRestBell();
 }
 
 /**
- * Reproduce un tono de campana de box (ring bell) al finalizar el descanso.
- * Suena como un "ding-ding" metálico de inicio/fin de round.
+ * Precarga y decodifica el MP3 de la campana dentro del AudioContext.
  */
-export function playRestTimerBeep(): void {
+export function primeRestBell(): void {
+  if (!audioContext || audioContext.state !== 'running') return;
+  void loadRestBellBuffer();
+}
+
+function loadRestBellBuffer(): Promise<AudioBuffer | null> {
+  if (restBellBuffer) return Promise.resolve(restBellBuffer);
+  if (restBellLoad) return restBellLoad;
+
+  const ctx = audioContext;
+  if (!ctx) return Promise.resolve(null);
+
+  restBellLoad = fetch(REST_BELL_SRC)
+    .then((response) => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.arrayBuffer();
+    })
+    .then(
+      (data) =>
+        new Promise<AudioBuffer>((resolve, reject) => {
+          ctx.decodeAudioData(data, resolve, reject);
+        })
+    )
+    .then((buffer) => {
+      restBellBuffer = buffer;
+      return buffer;
+    })
+    .catch((error) => {
+      console.warn('No se pudo preparar la campana de descanso:', error);
+      restBellLoad = null;
+      return null;
+    });
+
+  return restBellLoad;
+}
+
+function playBellBuffer(buffer: AudioBuffer): Promise<void> {
+  const ctx = audioContext;
+  if (!ctx) return Promise.resolve();
+
+  return new Promise((resolve) => {
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(ctx.destination);
+    source.onended = () => resolve();
+    source.start();
+
+    // Red de seguridad por si el navegador no dispara "ended".
+    window.setTimeout(resolve, buffer.duration * 1000 + 150);
+  });
+}
+
+/**
+ * Campana sintetizada de respaldo (si el MP3 no puede decodificarse).
+ */
+function playSynthBell(): void {
   try {
     unlockAudio();
     if (!audioContext) return;
@@ -73,11 +136,45 @@ export function playRestTimerBeep(): void {
     };
 
     // 🔔 Doble campana estilo box: "ding" ... "ding"
-    // Primer golpe (más fuerte)
     strikeBell(now, 620, 0.35);
-    // Segundo golpe (ligeramente más suave, 180ms después)
     strikeBell(now + 0.18, 620, 0.25);
   } catch (e) {
     console.warn('Error al reproducir audio del temporizador:', e);
   }
+}
+
+/**
+ * Reproduce la campana de fin de descanso dos veces seguidas
+ * (el MP3 original y una repetición adicional).
+ */
+export function playRestTimerBeep(): void {
+  unlockAudio();
+
+  const ctx = audioContext;
+  if (!ctx) {
+    playSynthBell();
+    return;
+  }
+
+  void (async () => {
+    if (ctx.state === 'suspended') {
+      try {
+        await ctx.resume();
+      } catch {
+        // Si el navegador no permite reanudar, intentamos el sonido sintetizado.
+        playSynthBell();
+        return;
+      }
+    }
+
+    const buffer = await loadRestBellBuffer();
+    if (!buffer) {
+      playSynthBell();
+      return;
+    }
+
+    await playBellBuffer(buffer);
+    // Repetición adicional solicitada: suena una vez más.
+    await playBellBuffer(buffer);
+  })();
 }

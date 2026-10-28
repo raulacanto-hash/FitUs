@@ -1,5 +1,5 @@
-import React from 'react';
-import { Play, Clock, Dumbbell, Layers, ChevronRight, Sparkles } from 'lucide-react';
+import React, { useState } from 'react';
+import { Play, Clock, Dumbbell, Layers, ChevronRight, ChevronDown, Sparkles, BarChart2 } from 'lucide-react';
 import { RoutineTemplate } from '../../types/workout';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -15,6 +15,7 @@ export const RoutineHeroCard: React.FC<RoutineHeroCardProps> = ({
   onViewDetails
 }) => {
   const { accent, isDark } = useTheme();
+  const [showExercises, setShowExercises] = useState(false);
   const totalSets = routine.exercises.reduce((acc, ex) => acc + ex.targetSets, 0);
 
   return (
@@ -86,6 +87,55 @@ export const RoutineHeroCard: React.FC<RoutineHeroCardProps> = ({
           <span>{totalSets} series</span>
         </div>
       </div>
+
+      {/* Resumen desplegable de ejercicios (series, reps y carga) */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setShowExercises((prev) => !prev);
+        }}
+        aria-expanded={showExercises}
+        className={`w-full flex items-center justify-between gap-2 px-3 py-2 mb-3 rounded-2xl border text-[11px] font-bold transition-colors ${
+          isDark ? 'bg-zinc-950/60 border-zinc-800/80' : 'bg-white border-zinc-200'
+        }`}
+        style={{ color: accent.hex }}
+      >
+        <span className="flex items-center gap-1.5">
+          <BarChart2 className="w-3.5 h-3.5" />
+          {showExercises ? 'Ocultar ejercicios' : `Ver ejercicios (${routine.exercises.length})`}
+        </span>
+        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showExercises ? 'rotate-180' : ''}`} />
+      </button>
+
+      {showExercises && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className={`space-y-1.5 mb-4 rounded-2xl border p-2 ${
+            isDark ? 'bg-zinc-950/60 border-zinc-800/80' : 'bg-white border-zinc-200'
+          }`}
+        >
+          {routine.exercises.map((ex, idx) => {
+            const repsText = ex.repsRange || `${ex.defaultReps} reps`;
+            const weightText = ex.weightRange || `${ex.defaultWeight} kg`;
+            return (
+              <div key={`${ex.name}-${idx}`} className="flex items-start gap-2">
+                <span className={`w-4 h-4 rounded-md flex items-center justify-center text-[9px] font-mono font-bold flex-shrink-0 mt-0.5 ${
+                  isDark ? 'bg-zinc-800 text-zinc-400' : 'bg-zinc-100 text-zinc-500'
+                }`}>
+                  {idx + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-bold truncate">{ex.name}</p>
+                  <p className={`text-[10px] font-mono truncate ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                    {ex.targetSets} series · {repsText} · {weightText}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Botón de Iniciar */}
       <button

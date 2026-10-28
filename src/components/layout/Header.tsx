@@ -5,9 +5,10 @@ import { useTheme } from '../../context/ThemeContext';
 
 interface HeaderProps {
   timer: RestTimerState;
+  timerFontScale?: number;
 }
 
-export const Header: React.FC<HeaderProps> = ({ timer }) => {
+export const Header: React.FC<HeaderProps> = ({ timer, timerFontScale = 1 }) => {
   const { secondsRemaining, isActive, toggleTimer, resetTimer, adjustTimer } = timer;
   const { accent, setThemeMode, isDark } = useTheme();
 
@@ -54,7 +55,7 @@ export const Header: React.FC<HeaderProps> = ({ timer }) => {
             }}
           >
             <Timer className="w-3.5 h-3.5" style={{ color: accent.hex }} />
-            <span className="font-mono font-bold text-xs" style={{ color: accent.hex }}>
+            <span className="font-mono font-bold" style={{ color: accent.hex, fontSize: `${Math.round(12 * timerFontScale)}px` }}>
               {minutes}:{seconds}
             </span>
 
